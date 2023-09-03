@@ -1,0 +1,6 @@
+/target
+*.gif
+*.png
+.DS_Store
+.idea
+Cargo.lock
