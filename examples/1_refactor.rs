@@ -2,6 +2,7 @@
 
 extern crate core;
 
+use std::ops::Add;
 use mpm2::canvas;
 
 use num_traits::identities::Zero;
@@ -9,7 +10,6 @@ use num_traits::identities::Zero;
 type Real = f64;
 type Vector = nalgebra::Vector2<Real>;
 type Matrix = nalgebra::Matrix2<Real>;
-
 
 #[derive(Debug)]
 struct Particle {
@@ -33,7 +33,7 @@ impl Particle {
             v: Vector::zeros(),
             F: Matrix::identity(),
             C: Matrix::zeros(),
-            Jp: 1. as Real,
+            Jp: 1.,
             c: c_,
         }
     }
@@ -54,6 +54,39 @@ fn add_object(
     }
 }
 
+fn grid_datas(pos_in: &Vector, dx: Real, inv_dx: Real, n: usize) -> Vec<(usize, Vector, Real)> {
+    let base_coord = pos_in * inv_dx - Vector::repeat(0.5);
+    let base_coord = nalgebra::Vector2::<i32>::new(
+        base_coord.x as i32, // e.g., "3.6 -> 3", "3.1 -> 2"
+        base_coord.y as i32);
+    let fx = pos_in * inv_dx - base_coord.cast::<Real>();
+    let wxy = {
+        let a = Vector::repeat(1.5) - fx;
+        let b = fx - Vector::repeat(1.0);
+        let c = fx - Vector::repeat(0.5);
+        [
+            0.5 * a.component_mul(&a),
+            Vector::repeat(0.75) - b.component_mul(&b),
+            0.5 * c.component_mul(&c)
+        ]
+    };
+    let mut res = Vec::<(usize, Vector, Real)>::new();
+    res.reserve(9);
+    for i in 0..3 as usize {
+        for j in 0..3 as usize {
+            let dpos = Vector::new(
+                (i as Real - fx.x) * dx,
+                (j as Real - fx.y) * dx);
+            let iw = (base_coord.x + i as i32) as usize;
+            let ih = (base_coord.y + j as i32) as usize;
+            let w = wxy[i].x * wxy[j].y;
+            let ig = ih * (n + 1) + iw;
+            res.push((ig, dpos, w));
+        }
+    }
+    res
+}
+
 fn mpm2_particle2grid(
     grid: &mut Vec<nalgebra::Vector3::<Real>>,
     n: usize,
@@ -65,58 +98,30 @@ fn mpm2_particle2grid(
     young: Real,
     nu: Real) {
     assert_eq!(grid.len(), (n + 1) * (n + 1));
-    let dx: Real = 1. / n as Real;
-    let inv_dx: Real = 1. / dx;
+    let dx: Real = 1.0 / n as Real;
+    let inv_dx: Real = 1.0 / dx;
 
     // Reset grid
     grid.iter_mut().for_each(|p| p.set_zero());
 
     // P2G
     for p in particles {
-        let base_coord = p.x * inv_dx - Vector::repeat(0.5_f32 as Real );
-        let base_coord = nalgebra::Vector2::<i32>::new(base_coord.x as i32, base_coord.y as i32);
-        let fx = p.x * inv_dx - base_coord.cast::<Real>();
-        let w = {
-            let a = Vector::repeat(1.5) - fx;
-            let b = fx - Vector::repeat(1.0);
-            let c = fx - Vector::repeat(0.5);
-            [
-                0.5 * a.component_mul(&a),
-                Vector::repeat(0.75) - b.component_mul(&b),
-                0.5 * c.component_mul(&c)
-            ]
-        };
-
-        let affine = {
-            let mu_0 = young / (2. * (1. + nu));
-            let lambda_0 = young * nu / ((1. + nu) * (1. - 2. * nu));
-            let e = (hardening * (1.0 - p.Jp)).exp();
-            // let e = 1_f32;
-            let mu = mu_0 * e;
-            let lambda = lambda_0 * e;
-            let J: Real = p.F.determinant();
-            let (r, s) = mpm2::polar_decomposition(&p.F);
+        let affine = { // (affine * dx) -> delta momentum
+            let pf = mpm2::pf(&p.F, hardening, young, nu, p.Jp);
             let dinv = 4. * inv_dx * inv_dx;
-            let pf = 2. * mu * (p.F - r) * (p.F).transpose() + lambda * (J - 1.) * J * Matrix::identity();
             let stress = -(dt * vol) * (dinv * pf);
             stress + particle_mass * p.C
         };
 
-        for i in 0..3 as usize {
-            for j in 0..3 as usize {
-                let dpos = Vector::new(
-                    (i as Real - fx.x) * dx, (j as Real - fx.y) * dx);
-                let mass_x_velocity = nalgebra::Vector3::<Real>::new(
-                    particle_mass * p.v.x,
-                    particle_mass * p.v.y,
-                    particle_mass);
-                let iw = (base_coord.x + i as i32) as usize;
-                let ih = (base_coord.y + j as i32) as usize;
-                let t = affine * dpos;
-                let t = nalgebra::Vector3::<Real>::new(t.x, t.y, 0.);
-                grid[ih * (n + 1) + iw] +=
-                    w[i].x * w[j].y * (mass_x_velocity + t);
-            }
+        let gds = grid_datas(&p.x, dx, inv_dx, n);
+        for &gd in gds.iter() {
+            let mass_x_velocity = nalgebra::Vector3::<Real>::new(
+                particle_mass * p.v.x,
+                particle_mass * p.v.y,
+                particle_mass);
+            let t = affine * gd.1; // increase of momentum
+            let t = nalgebra::Vector3::<Real>::new(t.x, t.y, 0.);
+            grid[gd.0] += gd.2 * (mass_x_velocity + t);
         }
     }
 }
@@ -127,57 +132,27 @@ fn mpm2_grid2particle(
     ngrid: usize,
     dt: Real,
     is_plastic: bool) {
-    let dx = 1. / ngrid as Real;
-    let mgrid = ngrid + 1;
+    let dx = 1.0 / ngrid as Real;
     let inv_dx = 1. / dx;
     for p in particles {
-        let base_coord = p.x * inv_dx - Vector::repeat(0.5);
-        let base_coord = nalgebra::Vector2::<i32>::new(base_coord.x as i32, base_coord.y as i32);
-        let fx = p.x * inv_dx - base_coord.cast::<Real>();
-        let w = {
-            let a = Vector::repeat(1.5) - fx;
-            let b = fx - Vector::repeat(1.0);
-            let c = fx - Vector::repeat(0.5);
-            [
-                0.5 * a.component_mul(&a),
-                Vector::repeat(0.75) - b.component_mul(&b),
-                0.5 * c.component_mul(&c)
-            ]
-        };
         p.C.set_zero();
         p.v.set_zero();
-        for i in 0..3 {
-            for j in 0..3 {
-                let dpos = Vector::new(
-                    i as Real - fx.x, j as Real - fx.y);
-                let ig = (base_coord.x + i as i32) as usize;
-                let jg = (base_coord.y + j as i32) as usize;
-                assert!(ig < mgrid);
-                assert!(jg < mgrid);
-                let grid_v = Vector::new(
-                    grid[jg * mgrid + ig].x,
-                    grid[jg * mgrid + ig].y);
-                let weight = w[i].x * w[j].y;
-                p.v += weight * Vector::new(grid_v.x, grid_v.y);
-                let t: Matrix = Matrix::new(
-                    grid_v.x * dpos.x, grid_v.x * dpos.y,
-                    grid_v.y * dpos.x, grid_v.y * dpos.y);
-                p.C += 4. * inv_dx * weight * t;
-            }
+        let gds = grid_datas(&p.x, dx, inv_dx, ngrid);
+        for &gd in gds.iter() {
+            let dpos = gd.1;
+            let grid_v = Vector::new(grid[gd.0].x, grid[gd.0].y);
+            let weight = gd.2;
+            p.v += weight * Vector::new(grid_v.x, grid_v.y);
+            let t: Matrix = Matrix::new(
+                grid_v.x * dpos.x, grid_v.x * dpos.y,
+                grid_v.y * dpos.x, grid_v.y * dpos.y);
+            p.C += 4. * inv_dx * inv_dx * weight * t; // gradient of velocity, C*dx = dv
         }
-        p.x += dt * p.v;
-        let tmp0: Matrix = Matrix::identity() + dt * p.C;
-        let mut F0: Matrix = tmp0 * p.F;
+        p.x += dt * p.v;  // step-time
+        let mut F0: Matrix = (Matrix::identity() + dt * p.C) * p.F; // step-time
         let oldJ0 = F0.determinant();
         if is_plastic {  // updating deformation gradient tensor by clamping the eignvalues
-            let svd = F0.svd(true, true);
-            let svd_u0 :Matrix = svd.u.unwrap();
-            let mut sig0: Matrix = Matrix::from_diagonal(&svd.singular_values);
-            let svd_v0 = svd.v_t.unwrap().transpose();
-            for i in 0..2 {  // Snow Plasticity
-                sig0[(i, i)] = mpm2::myclamp(sig0[(i, i)], 1.0 - 2.5e-2, 1.0 + 7.5e-3);
-            }
-            F0 = svd_u0 * sig0 * svd_v0.transpose();
+            F0 = mpm2::clip_strain(&F0);
         }
         let Jp_new0: Real = mpm2::myclamp(p.Jp * oldJ0 / F0.determinant(), 0.6, 20.0);
         p.Jp = Jp_new0;
@@ -188,7 +163,7 @@ fn mpm2_grid2particle(
 fn main() {
     let mut particles = Vec::<Particle>::new();
     {
-        let mut rng : rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8;32]);
+        let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
         add_object(&mut particles, Vector::new(0.55, 0.45), 1, &mut rng);
         add_object(&mut particles, Vector::new(0.45, 0.65), 2, &mut rng);
         add_object(&mut particles, Vector::new(0.55, 0.85), 3, &mut rng);
@@ -196,8 +171,8 @@ fn main() {
 
     const DT: Real = 1e-4;
     const HARDENING: Real = 10.0; // Snow HARDENING factor
-    const E: Real = 1e4;          // Young's Modulus
-    const NU: Real = 0.2;         // Poisson ratio
+    const YOUNG: Real = 1e4;          // Young's Modulus
+    const POISSON: Real = 0.2;         // Poisson ratio
     const VOL: Real = 1.0;
     const PARTICLE_MASS: Real = 1.0;
 
@@ -207,7 +182,7 @@ fn main() {
 
     const FRAME_DT: Real = 1e-3;
     let mut canvas = mpm2::canvas_gif::CanvasGif::new(
-        std::path::Path::new("0.gif"), (800, 800),
+        std::path::Path::new("1.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587));
     let mut istep = 0;
 
@@ -219,17 +194,17 @@ fn main() {
                            &particles,
                            VOL,
                            PARTICLE_MASS,
-                           DT, HARDENING, E, NU);
+                           DT, HARDENING, YOUNG, POISSON);
         {
             for igrid in 0..M {
                 for jgrid in 0..M {  // For all grid nodes
                     let g0 = &mut grid[jgrid * M + igrid];
-                    if g0.z <= Real::zero() { continue; } // grid is empty
+                    if g0.z <= 0. { continue; } // grid is empty
                     *g0 = *g0 / g0.z;
                     *g0 += DT * nalgebra::Vector3::new(0., -200., 0.);
-                    let boundary = 0.05_f32;
-                    let x = igrid as f32 / N as f32;
-                    let y = jgrid as f32 / N as f32;
+                    let boundary = 0.05;
+                    let x = igrid as Real / N as Real;
+                    let y = jgrid as Real / N as Real;
                     if x < boundary || x > 1. - boundary || y > 1. - boundary {
                         *g0 = nalgebra::Vector3::repeat(0.); // Sticky
                     }

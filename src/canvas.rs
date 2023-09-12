@@ -1,37 +1,87 @@
+use num_traits::AsPrimitive;
+
 pub struct Canvas {
     pub width: usize,
     pub height: usize,
     data: Vec<u8>,
-    path: std::path::PathBuf,
-    gif_enc: Option<gif::Encoder<std::fs::File>>,
 }
 
 impl Canvas {
-    pub fn new(path_: &std::path::Path, size: (usize, usize)) -> Self {
+    pub fn new(size: (usize, usize)) -> Self {
         Self {
             width: size.0,
             height: size.1,
             data: vec!(0; size.0 * size.1 * 3),
-            path: path_.try_into().unwrap(),
-            gif_enc: None,
         }
     }
 
-    pub fn paint_circle(&mut self, x: f32, y: f32, rad: f32, color: i32) {
-        let iwmin = (x - rad).floor().clamp(0_f32, self.width as f32) as i64;
-        let iwmax = (x + rad).floor().clamp(0_f32, self.width as f32) as i64;
-        let ihmin = (y - rad).floor().clamp(0_f32, self.width as f32) as i64;
-        let ihmax = (y + rad).floor().clamp(0_f32, self.width as f32) as i64;
+    pub fn paint_circle<Real>(&mut self, x: Real, y: Real, rad: Real, color: i32)
+    where Real: num_traits::Float + 'static + AsPrimitive<i64>,
+          i64: AsPrimitive<Real>
+    {
+        let iwmin: i64 = (x - rad).floor().as_();
+        let iwmax: i64 = (x + rad).floor().as_();
+        let ihmin: i64 = (y - rad).floor().as_();
+        let ihmax: i64 = (y + rad).floor().as_();
         let r = ((color & 0xff0000) >> 16) as u8;
         let g = ((color & 0x00ff00) >> 8) as u8;
         let b = (color & 0x0000ff) as u8;
         for iw in iwmin..iwmax + 1 {
+            if iw < 0 || iw >= self.width.try_into().unwrap() { continue; }
             for ih in ihmin..ihmax + 1 {
-                if iw < 0 || iw >= self.width.try_into().unwrap() { continue; }
                 if ih < 0 || ih >= self.height.try_into().unwrap() { continue; }
-                let w = iw as f32;
-                let h = ih as f32;
+                let w: Real = iw.as_();
+                let h: Real = ih.as_();
                 if (w - x) * (w - x) + (h - y) * (h - y) > rad * rad { continue; }
+                let idata = (self.height - 1 - ih as usize) * self.width + iw as usize;
+                self.data[idata * 3 + 0] = r;
+                self.data[idata * 3 + 1] = g;
+                self.data[idata * 3 + 2] = b;
+            }
+        }
+    }
+
+
+    pub fn paint_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, rad: f32, color: i32) {
+        let x0 = x0 as f64;
+        let x1 = x1 as f64;
+        let y0 = y0 as f64;
+        let y1 = y1 as f64;
+        let rad = rad as f64;
+        let (iwmin,iwmax,ihmin,ihmax) = {
+            let iwmin0 = (x0 - rad - 0.5_f64).ceil() as i64;
+            let iwmax0 = (x0 + rad - 0.5_f64).floor() as i64;
+            let ihmin0 = (y0 - rad - 0.5_f64).ceil() as i64;
+            let ihmax0 = (y0 + rad - 0.5_f64).floor() as i64;
+            let iwmin1 = (x1 - rad - 0.5_f64).ceil() as i64;
+            let iwmax1 = (x1 + rad - 0.5_f64).floor() as i64;
+            let ihmin1 = (y1 - rad - 0.5_f64).ceil() as i64;
+            let ihmax1 = (y1 + rad - 0.5_f64).floor() as i64;
+            (
+                std::cmp::min(iwmin0, iwmin1),
+                std::cmp::max(iwmax0, iwmax1),
+                std::cmp::min(ihmin0, ihmin1),
+                std::cmp::max(ihmax0, ihmax1))
+        };
+        let r = ((color & 0xff0000) >> 16) as u8;
+        let g = ((color & 0x00ff00) >> 8) as u8;
+        let b = (color & 0x0000ff) as u8;
+        let sqlen = (x1-x0) * (x1-x0) + (y1-y0) * (y1-y0);
+        for ih in ihmin..ihmax + 1 {
+            if ih < 0 || ih >= self.height.try_into().unwrap() { continue; }
+            for iw in iwmin..iwmax + 1 {
+                if iw < 0 || iw >= self.width.try_into().unwrap() { continue; }
+                let w: f64 = iw as f64 + 0.5_f64; // pixel center
+                let h: f64 = ih as f64 + 0.5_f64; // pixel center
+                let t: f64 = ((w-x0)*(x1-x0) + (h-y0)*(y1-y0))/sqlen;
+                let sqdist = if t < 0. {
+                    (w-x0)*(w-x0) + (h-y0)*(h-y0)
+                } else if t > 1. {
+                    (w-x1)*(w-x1) + (h-y1)*(h-y1)
+                } else {
+                    (w-x0)*(w-x0) + (h-y0)*(h-y0) - sqlen * t * t
+                };
+                if sqdist > rad * rad { continue; }
                 let idata = (self.height - 1 - ih as usize) * self.width + iw as usize;
                 self.data[idata * 3 + 0] = r;
                 self.data[idata * 3 + 1] = g;
@@ -53,10 +103,9 @@ impl Canvas {
         }
     }
 
-    pub fn write(&mut self) {
+    pub fn write(&mut self, path_: &std::path::Path) {
         // For reading and opening files
-        dbg!(&self.path);
-        let file = std::fs::File::create(&self.path).unwrap();
+        let file = std::fs::File::create(path_).unwrap();
         let ref mut w = std::io::BufWriter::new(file);
         let mut encoder = png::Encoder::new(
             w,
@@ -69,91 +118,3 @@ impl Canvas {
     }
 }
 
-
-pub struct CanvasGif {
-    pub width: usize,
-    pub height: usize,
-    data: Vec<u8>,
-    gif_enc: Option<gif::Encoder<std::fs::File>>
-}
-
-impl CanvasGif {
-    pub fn new(path_: &std::path::Path,
-               size: (usize, usize),
-               palette: &Vec<i32>) -> Self {
-        let res_encoder = {
-            let global_palette = {
-                let mut res: Vec<u8> = vec!();
-                for color in palette {
-                    res.push(((color & 0xff0000) >> 16) as u8);
-                    res.push(((color & 0x00ff00) >> 8) as u8);
-                    res.push((color & 0x0000ff) as u8);
-                }
-                res
-            };
-            gif::Encoder::new(
-                std::fs::File::create(&path_).unwrap(),
-                size.0.try_into().unwrap(),
-                size.1.try_into().unwrap(),
-                &global_palette)
-        };
-        match res_encoder {
-            Err(_e) => {
-                Self {
-                    width: size.0,
-                    height: size.1,
-                    data: vec!(0; size.0 * size.1),
-                    gif_enc: None,
-                }
-            }
-            Ok(t) => {
-                Self {
-                    width: size.0,
-                    height: size.1,
-                    data: vec!(0; size.0 * size.1),
-                    gif_enc: Some(t),
-                }
-            }
-        }
-    }
-
-    pub fn paint_circle(&mut self, x: f32, y: f32, rad: f32, color: u8) {
-        let iwmin = (x - rad).floor().clamp(0_f32, self.width as f32) as i64;
-        let iwmax = (x + rad).floor().clamp(0_f32, self.width as f32) as i64;
-        let ihmin = (y - rad).floor().clamp(0_f32, self.width as f32) as i64;
-        let ihmax = (y + rad).floor().clamp(0_f32, self.width as f32) as i64;
-        for iw in iwmin..iwmax + 1 {
-            for ih in ihmin..ihmax + 1 {
-                if iw < 0 || iw >= self.width.try_into().unwrap() { continue; }
-                if ih < 0 || ih >= self.height.try_into().unwrap() { continue; }
-                let w = iw as f32;
-                let h = ih as f32;
-                if (w - x) * (w - x) + (h - y) * (h - y) > rad * rad { continue; }
-                let idata = (self.height - 1 - ih as usize) * self.width + iw as usize;
-                self.data[idata] = color;
-            }
-        }
-    }
-
-    pub fn clear(&mut self, color: u8) {
-        for ih in 0..self.height {
-            for iw in 0..self.width {
-                self.data[ih * self.width + iw] = color;
-            }
-        }
-    }
-
-    pub fn write(&mut self) {
-        // For reading and opening files
-        let mut frame = gif::Frame::default();
-        frame.width = self.width as u16;
-        frame.height = self.height as u16;
-        frame.buffer = std::borrow::Cow::Borrowed(&self.data);
-        match &mut self.gif_enc {
-            None => {}
-            Some(enc) => {
-                let _ = &enc.write_frame(&frame);
-            }
-        }
-    }
-}
