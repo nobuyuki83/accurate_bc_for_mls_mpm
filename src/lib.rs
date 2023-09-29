@@ -1,3 +1,5 @@
+extern crate core;
+
 use num_traits::AsPrimitive;
 
 pub mod canvas;

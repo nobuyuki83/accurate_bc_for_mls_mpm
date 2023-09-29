@@ -30,6 +30,14 @@ impl Background {
             }
             ps
         };
+        {
+            let mut nodes = Vec::<del_geo::kdtree2::Node<Real>>::new();
+            let mut ps = points_.iter().enumerate().map(|v| (*v.1, v.0)).collect();
+            nodes.resize(1, del_geo::kdtree2::Node::new());
+            del_geo::kdtree2::construct_kdtree(&mut nodes, 0,
+                                               &mut ps, 0, points_.len(),
+                                               0);
+        }
         let np = (n_ + 1) * (n_ + 1) + points_.len();
         let vm_ = vec!(nalgebra::Vector3::<Real>::repeat(0.); np);
         Self {
@@ -87,7 +95,7 @@ impl Background {
                 res.push((ig, dpos, weight));
             }
         }
-        for (ip, p) in self.points.iter().enumerate() {
+        for (_ip, p) in self.points.iter().enumerate() {
             let diffx = p.x - pos_in.x;
             let diffy = p.y - pos_in.y;
             if diffx.abs() > 1.5 * self.dx { continue; }
