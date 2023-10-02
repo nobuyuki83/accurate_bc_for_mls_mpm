@@ -11,5 +11,5 @@ num-traits = "0.2.15"
 rand = "0.8.5"
 png = "0.17.9"
 gif = "0.12.0"
-# del-geo = {path="../del-geo"}
-del-geo = "0.1.3"
+del-geo = {path="../del-geo"}
+# del-geo = "0.1.3"

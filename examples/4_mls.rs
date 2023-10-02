@@ -2,9 +2,23 @@
 
 extern crate core;
 
+use num_traits::AsPrimitive;
+
 type Real = f64;
 type Vector = nalgebra::Vector2<Real>;
 type Matrix = nalgebra::Matrix2<Real>;
+
+fn weight_spline_quad<Real>(x: Real) -> Real
+    where Real: num_traits::Float + 'static,
+          f64: AsPrimitive<Real>
+{
+    let half = 0.5_f64.as_();
+    if x.abs() < half {
+        0.75.as_() - x * x
+    } else {
+        (1.5.as_() - x.abs()) * (1.5.as_() - x.abs()) * half
+    }
+}
 
 struct Background {
     pub n: usize,
@@ -12,6 +26,7 @@ struct Background {
     pub dx: Real,
     pub inv_dx: Real,
     pub points: Vec<Vector>,
+    pub kdtree2: del_geo::kdtree2::KdTree2<Real>,
     pub vm: Vec<nalgebra::Vector3::<Real>>, // velocity and mass
 }
 
@@ -23,21 +38,21 @@ impl Background {
             let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
             let center = Vector::new(0.5, 0.5);
             let mut ps = Vec::<Vector>::new();
-            for _i in 0..100 {
+            for _i in 0..1000 {
+                /*
+                let i = (rng.gen::<Real>() * (m as Real) * (m as Real)) as usize;
+                let h = i / m;
+                let w = i - h * m;
+                let x = (w as Real) / n_ as Real;
+                let y = (h as Real) / n_ as Real;
+                ps.push(Vector::new(x, y));
+                 */
                 let x: Real = (rng.gen::<Real>() * 2. - 1.) * 0.3 + center.x;
                 let y: Real = (rng.gen::<Real>() * 2. - 1.) * 0.3 + center.y;
                 ps.push(Vector::new(x, y));
             }
             ps
         };
-        {
-            let mut nodes = Vec::<del_geo::kdtree2::Node<Real>>::new();
-            let mut ps = points_.iter().enumerate().map(|v| (*v.1, v.0)).collect();
-            nodes.resize(1, del_geo::kdtree2::Node::new());
-            del_geo::kdtree2::construct_kdtree(&mut nodes, 0,
-                                               &mut ps, 0, points_.len(),
-                                               0);
-        }
         let np = (n_ + 1) * (n_ + 1) + points_.len();
         let vm_ = vec!(nalgebra::Vector3::<Real>::repeat(0.); np);
         Self {
@@ -45,6 +60,7 @@ impl Background {
             m: m,
             dx: 1. / n_ as Real,
             inv_dx: n_ as Real,
+            kdtree2: del_geo::kdtree2::KdTree2::from_vec(&points_),
             points: points_,
             vm: vm_,
         }
@@ -95,11 +111,14 @@ impl Background {
                 res.push((ig, dpos, weight));
             }
         }
-        for (_ip, p) in self.points.iter().enumerate() {
+        for (ip, p) in self.points.iter().enumerate() {
             let diffx = p.x - pos_in.x;
             let diffy = p.y - pos_in.y;
             if diffx.abs() > 1.5 * self.dx { continue; }
             if diffy.abs() > 1.5 * self.dx { continue; }
+            let wx = weight_spline_quad(diffx * self.inv_dx);
+            let wy = weight_spline_quad(diffy * self.inv_dx);
+            res.push((ip + self.m * self.m, p - pos_in, wx * wy));
         }
         res
     }
@@ -122,27 +141,37 @@ fn main() {
             let y: Real = (rng.gen::<Real>() * 2. - 1.) * 0.5 + 0.5;
             let mut cmat = nalgebra::Matrix3::<Real>::zeros();
             let mut rvec = nalgebra::Matrix3x2::<Real>::repeat(0.);
-            for smpl in bg.near_samples(&Vector::new(x, y)) {
+            let samples = bg.near_samples(&Vector::new(x, y));
+            for smpl in samples.iter() {
                 assert!(smpl.1.x.abs() < 1.5 * bg.dx);
                 assert!(smpl.1.y.abs() < 1.5 * bg.dx);
-                cmat[(0, 0)] += smpl.2;
-                let mut a = cmat.view_mut((1, 0), (1, 2));
-                a += smpl.2 * smpl.1.transpose();
-                let mut a = cmat.view_mut((0, 1), (2, 1));
-                a += smpl.2 * smpl.1;
+                let w = smpl.2;
+                cmat[(0, 0)] += w;
+                let mut a = cmat.view_mut((0, 1), (1, 2));
+                a += w * smpl.1.transpose();
+                let mut a = cmat.view_mut((1, 0), (2, 1));
+                a += w * smpl.1;
                 let mut a = cmat.view_mut((1, 1), (2, 2));
-                a += smpl.2 * smpl.1 * smpl.1.transpose();
+                a += w * smpl.1 * smpl.1.transpose();
                 let ig = smpl.0;
                 // dbg!(ig, bg.vm[ig].x);
-                rvec[(0, 0)] += bg.vm[ig].x * smpl.2;
-                rvec[(1, 0)] += bg.vm[ig].x * smpl.2 * smpl.1.x;
-                rvec[(2, 0)] += bg.vm[ig].x * smpl.2 * smpl.1.y;
-                rvec[(0, 1)] += bg.vm[ig].y * smpl.2;
-                rvec[(1, 1)] += bg.vm[ig].y * smpl.2 * smpl.1.x;
-                rvec[(2, 1)] += bg.vm[ig].y * smpl.2 * smpl.1.y;
+                rvec[(0, 0)] += bg.vm[ig].x * w;
+                rvec[(1, 0)] += bg.vm[ig].x * w * smpl.1.x;
+                rvec[(2, 0)] += bg.vm[ig].x * w * smpl.1.y;
+                rvec[(0, 1)] += bg.vm[ig].y * w;
+                rvec[(1, 1)] += bg.vm[ig].y * w * smpl.1.x;
+                rvec[(2, 1)] += bg.vm[ig].y * w * smpl.1.y;
             }
             let asol = cmat.try_inverse().unwrap() * rvec;
-            // dbg!(x,y,asol);
+            if samples.len() == 10 {
+                const EPS: f64 = 1.0e-8;
+                assert!((asol[(0, 0)] - x).abs() < EPS);
+                assert!((asol[(1, 0)] - 1.0).abs() < EPS);
+                assert!(asol[(2, 0)].abs() < EPS);
+                assert!((asol[(0, 1)] - y).abs() < EPS);
+                assert!(asol[(1, 1)].abs() < EPS);
+                assert!((asol[(2, 1)] - 1.0).abs() < EPS);
+            }
         }
     }
     {

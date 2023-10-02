@@ -1,7 +1,7 @@
 type Vector = nalgebra::Vector2::<f32>;
 
 fn intersections_polygon_gird(poly0: &Vec::<Vector>, n: usize)
-    -> Vec::<Vector>
+                              -> Vec::<Vector>
 {
     let inv_dx = n as f32;
     let dx = 1.0 / inv_dx;
@@ -24,7 +24,7 @@ fn intersections_polygon_gird(poly0: &Vec::<Vector>, n: usize)
             (p.y.floor() - p.y) / d.y
         } else { f32::MAX };
         loop {
-            let (mut tx_next, mut ty_next) = (tx,ty);
+            let (mut tx_next, mut ty_next) = (tx, ty);
             if tx < ty { // point on vertical edge
                 if tx > len { break; }
                 p = p0 + tx * d;
@@ -38,7 +38,7 @@ fn intersections_polygon_gird(poly0: &Vec::<Vector>, n: usize)
                 ty_next = if d.y > 0. { ty + 1. / d.y } else if d.y < 0. { ty - 1. / d.y } else { f32::MAX };
             }
             poly1.push(p * dx);
-            (tx,ty) = (tx_next, ty_next);
+            (tx, ty) = (tx_next, ty_next);
         }
     }
     poly1
@@ -54,17 +54,17 @@ fn main() {
         Vector::new(0.511, 0.681),
     );
 
-    let poly1= intersections_polygon_gird(&poly0, N);
+    let poly1 = intersections_polygon_gird(&poly0, N);
 
     use mpm2::canvas::Canvas;
     let mut canvas = Canvas::new((827, 827));
 
-    for i in 0..N+1 {
+    for i in 0..N + 1 {
         let x = i as f32 / N as f32 * canvas.width as f32;
         canvas.paint_line(x, 0., x, canvas.height as f32,
-            0.5, 0x00888888);
+                          0.5, 0x00888888);
     }
-    for j in 0..N+1 {
+    for j in 0..N + 1 {
         let y = j as f32 / N as f32 * canvas.height as f32;
         canvas.paint_line(0., y, canvas.width as f32, y,
                           0.5, 0x00888888);

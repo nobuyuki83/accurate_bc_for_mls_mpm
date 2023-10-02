@@ -41,19 +41,24 @@ pub fn pixels_in_circle<Real>(
     res
 }
 
-pub fn pixels_in_line(
-    x0: f32, y0: f32,
-    x1: f32, y1: f32, rad: f32,
-    width: usize, height: usize) -> Vec<usize> {
+pub fn pixels_in_line<Real>(
+    x0: Real, y0: Real,
+    x1: Real, y1: Real, rad: Real,
+    width: usize, height: usize) -> Vec<usize>
+    where Real: num_traits::Float + 'static + AsPrimitive<i64>,
+          i64: AsPrimitive<Real>,
+          f64: AsPrimitive<Real>
+{
+    let half: Real = 0.5_f64.as_();
     let (iwmin,iwmax,ihmin,ihmax) = {
-        let iwmin0 = (x0 - rad - 0.5_f32).ceil() as i64;
-        let iwmax0 = (x0 + rad - 0.5_f32).floor() as i64;
-        let ihmin0 = (y0 - rad - 0.5_f32).ceil() as i64;
-        let ihmax0 = (y0 + rad - 0.5_f32).floor() as i64;
-        let iwmin1 = (x1 - rad - 0.5_f32).ceil() as i64;
-        let iwmax1 = (x1 + rad - 0.5_f32).floor() as i64;
-        let ihmin1 = (y1 - rad - 0.5_f32).ceil() as i64;
-        let ihmax1 = (y1 + rad - 0.5_f32).floor() as i64;
+        let iwmin0: i64 = (x0 - rad - half).ceil().as_();
+        let iwmax0: i64 = (x0 + rad - half).floor().as_();
+        let ihmin0: i64 = (y0 - rad - half).ceil().as_();
+        let ihmax0: i64 = (y0 + rad - half).floor().as_();
+        let iwmin1: i64 = (x1 - rad - half).ceil().as_();
+        let iwmax1: i64 = (x1 + rad - half).floor().as_();
+        let ihmin1: i64 = (y1 - rad - half).ceil().as_();
+        let ihmax1: i64 = (y1 + rad - half).floor().as_();
         (
             std::cmp::min(iwmin0, iwmin1),
             std::cmp::max(iwmax0, iwmax1),
@@ -66,12 +71,12 @@ pub fn pixels_in_line(
         if ih < 0 || ih >= height.try_into().unwrap() { continue; }
         for iw in iwmin..iwmax + 1 {
             if iw < 0 || iw >= width.try_into().unwrap() { continue; }
-            let w = iw as f32 + 0.5_f32; // pixel center
-            let h = ih as f32 + 0.5_f32; // pixel center
+            let w = iw.as_() + half; // pixel center
+            let h = ih.as_() + half; // pixel center
             let t = ((w-x0)*(x1-x0) + (h-y0)*(y1-y0))/sqlen;
-            let sqdist = if t < 0. {
+            let sqdist = if t < Real::zero() {
                 (w-x0)*(w-x0) + (h-y0)*(h-y0)
-            } else if t > 1. {
+            } else if t > Real::one() {
                 (w-x1)*(w-x1) + (h-y1)*(h-y1)
             } else {
                 (w-x0)*(w-x0) + (h-y0)*(h-y0) - sqlen * t * t
@@ -114,7 +119,11 @@ impl Canvas {
         }
     }
 
-    pub fn paint_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, rad: f32, color: i32) {
+    pub fn paint_line<Real>(&mut self, x0: Real, y0: Real, x1: Real, y1: Real, rad: Real, color: i32)
+        where Real: num_traits::Float + 'static + AsPrimitive<i64>,
+              i64: AsPrimitive<Real>,
+              f64: AsPrimitive<Real>
+    {
         let (r,g,b) = rgb(color);
         let pixs = pixels_in_line(x0,y0, x1, y1, rad, self.width, self.height);
         for idata in pixs {
