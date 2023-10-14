@@ -101,6 +101,7 @@ fn main() {
     use mpm2::canvas::Canvas;
     let mut canvas = Canvas::new((827, 827));
 
+    // render coarse grid
     for i in 0..N + 1 {
         let x = i as Real / N as Real * canvas.width as Real;
         canvas.paint_line(x, 0., x, canvas.height as Real,
@@ -111,23 +112,15 @@ fn main() {
         canvas.paint_line(0., y, canvas.width as Real, y,
                           0.5, 0x00888888);
     }
-    for iline in 0..poly.len() {
-        let ip0 = iline;
-        let ip1 = (iline + 1) % poly.len();
-        canvas.paint_line(
-            poly[ip0].x * canvas.width as Real,
-            poly[ip0].y * canvas.height as Real,
-            poly[ip1].x * canvas.width as Real,
-            poly[ip1].y * canvas.height as Real,
-            2., 0x00ffffff);
-    }
+
+    // render fine grid
     for i in 0..N {
         for j in 0..N {
             if coarse_grid[i * N + j] == GridState::EDGE {
-                canvas.paint_circle(
-                    (i as Real + 0.5) / N as Real * canvas.width as Real,
-                    (j as Real + 0.5) / N as Real * canvas.height as Real,
-                    4., 0x00ff00ff);
+                // canvas.paint_circle(
+                //     (i as Real + 0.5) / N as Real * canvas.width as Real,
+                //     (j as Real + 0.5) / N as Real * canvas.height as Real,
+                //     4., 0x00ff00ff);
                 paint_fine_grid(
                     &mut canvas,
                     N_FINE,
@@ -137,13 +130,25 @@ fn main() {
                     Vec2::new((i + 1) as Real * DX, (j + 1) as Real * DX),
                 );
             }
-            else if coarse_grid[i * N + j] == GridState::FILLED {
-                canvas.paint_circle(
-                    (i as Real + 0.5) / N as Real * canvas.width as Real,
-                    (j as Real + 0.5) / N as Real * canvas.height as Real,
-                    4., 0x00ffffff);
-            }
+            // else if coarse_grid[i * N + j] == GridState::FILLED {
+            //     canvas.paint_circle(
+            //         (i as Real + 0.5) / N as Real * canvas.width as Real,
+            //         (j as Real + 0.5) / N as Real * canvas.height as Real,
+            //         4., 0x00ffffff);
+            // }
         }
+    }
+
+    // render mesh
+    for iline in 0..poly.len() {
+        let ip0 = iline;
+        let ip1 = (iline + 1) % poly.len();
+        canvas.paint_line(
+            poly[ip0].x * canvas.width as Real,
+            poly[ip0].y * canvas.height as Real,
+            poly[ip1].x * canvas.width as Real,
+            poly[ip1].y * canvas.height as Real,
+            2., 0x00ffffff);
     }
 
     canvas.write(&std::path::Path::new("5.png"));
