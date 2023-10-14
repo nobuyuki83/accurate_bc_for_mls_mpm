@@ -63,8 +63,31 @@ fn create_coarse_grid(poly : &Vec::<Vec2>, n : usize) -> Vec::<GridState>
     grid
 }
 
+fn paint_fine_grid(canvas : &mut mpm2::canvas::Canvas, n : usize, ul : Vec2, ur : Vec2, ll : Vec2, lr : Vec2)
+{
+    let grid_size = Vec2::new(ur.x - ul.x, ul.y - ll.y);
+    for i in 1..n {
+        // horizontal
+        canvas.paint_line(
+            ul.x * canvas.width as Real,
+            (ll.y + i as Real / n as Real * grid_size.y) * canvas.height as Real,
+            ur.x * canvas.width as Real,
+            (ll.y + i as Real / n as Real * grid_size.y) * canvas.height as Real,
+            0.5, 0x00888888);
+        // vertical
+        canvas.paint_line(
+            (ul.x + i as Real / n as Real * grid_size.x) * canvas.width as Real,
+            ul.y * canvas.width as Real,
+            (ul.x + i as Real / n as Real * grid_size.x) * canvas.width as Real,
+            ll.y * canvas.width as Real,
+            0.5, 0x00888888);
+    }
+}
+
 fn main() {
     const N: usize = 10;
+    const DX: Real = 1.0 / N as Real;
+    const N_FINE : usize = 3;
     const M: usize = N + 1;
 
     let poly = vec!(
@@ -105,6 +128,14 @@ fn main() {
                     (i as Real + 0.5) / N as Real * canvas.width as Real,
                     (j as Real + 0.5) / N as Real * canvas.height as Real,
                     4., 0x00ff00ff);
+                paint_fine_grid(
+                    &mut canvas,
+                    N_FINE,
+                    Vec2::new(i as Real * DX, j as Real * DX),
+                    Vec2::new((i + 1) as Real * DX, j as Real * DX),
+                    Vec2::new(i as Real * DX, (j + 1) as Real * DX),
+                    Vec2::new((i + 1) as Real * DX, (j + 1) as Real * DX),
+                );
             }
             else if coarse_grid[i * N + j] == GridState::FILLED {
                 canvas.paint_circle(
