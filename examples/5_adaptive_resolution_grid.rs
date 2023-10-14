@@ -11,13 +11,16 @@ enum GridState {
 }
 
 fn cross(target : &Vec2, t0 : &Vec2, t1 : &Vec2) -> Real
-{ -(t1.x - t0.x) * target.y + (t1.y - t0.y) * target.x }
+{
+    (t1.x - t0.x) * (target.y - t0.y) - (t1.y - t0.y) * (target.x - t0.x)
+}
 
 fn is_inside_triangle(target : &Vec2, t0 : &Vec2, t1 : &Vec2, t2 : &Vec2) -> bool
 {
-    (cross(target, t0, t1) > 0 as Real) &&
-    (cross(target, t1, t2) > 0 as Real) &&
-    (cross(target, t2, t0) > 0 as Real)
+    let c0 = cross(target, t0, t1) > 0 as Real;
+    let c1 = cross(target, t1, t2) > 0 as Real;
+    let c2 = cross(target, t2, t0) > 0 as Real;
+    c0 && c1 && c2
 }
 
 fn create_coarse_grid(poly : &Vec::<Vec2>, n : usize) -> Vec::<GridState>
@@ -97,7 +100,7 @@ fn main() {
     }
     for i in 0..N {
         for j in 0..N {
-            if coarse_grid[i * N + j] == GridState::EMPTY {
+            if coarse_grid[i * N + j] == GridState::EDGE {
                 canvas.paint_circle(
                     (i as Real + 0.5) / N as Real * canvas.width as Real,
                     (j as Real + 0.5) / N as Real * canvas.height as Real,
