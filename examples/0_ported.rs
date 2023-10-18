@@ -115,6 +115,7 @@ fn mpm2_particle2grid(
                 let t = affine * dpos;
                 let t = nalgebra::Vector3::<Real>::new(t.x, t.y, 0.);
                 grid[ih * (n + 1) + iw] +=
+                    // forgot to add particle_mass before t ?
                     w[i].x * w[j].y * (mass_x_velocity + t);
             }
         }
