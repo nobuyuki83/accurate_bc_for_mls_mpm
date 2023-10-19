@@ -51,6 +51,15 @@ const DX : f32 = 1.0 / N as Real;
 const DT : f32 = 1.0;
 const GRAVITY : f32 = -0.05;
 
+fn calc_weights(p : &Particle) -> Vec::<Vec2> {
+    let cell_diff = Vec2::new(p.pos.x % DX, p.pos.y  % DX);
+    let mut weights = vec![Vec2::new(0.0, 0.0); 3];
+    weights[0] = 0.5 * Vec2::new((0.5 - cell_diff.x).pow(2.0), (0.5 - cell_diff.y).pow(2.0));
+    weights[1] = 0.75 * Vec2::new((cell_diff.x).pow(2.0), (cell_diff.y).pow(2.0));
+    weights[2] = 0.5 * Vec2::new((0.5 + cell_diff.x).pow(2.0), (0.5 + cell_diff.y).pow(2.0));
+    weights
+}
+
 fn main() {
     // init
     let mut grid = vec![Cell::new(); NUM_CELLS];
@@ -82,13 +91,9 @@ fn main() {
 
         // particle to grid
         {
-            for p in particles {
+            for p in &particles {
                 // quadratic interpolation weights
-                let cell_diff = Vec2::new(p.pos.x % DX, p.pos.y  % DX);
-                let mut weights = vec![Vec2::new(0.0, 0.0); 3];
-                weights[0] = 0.5 * Vec2::new((0.5 - cell_diff.x).pow(2.0), (0.5 - cell_diff.y).pow(2.0));
-                weights[1] = 0.75 * Vec2::new((cell_diff.x).pow(2.0), (cell_diff.y).pow(2.0));
-                weights[2] = 0.5 * Vec2::new((0.5 + cell_diff.x).pow(2.0), (0.5 + cell_diff.y).pow(2.0));
+                let weights = calc_weights(p);
 
                 // for all surrounding 9 cells
                 for gx in 0..3 {
@@ -109,6 +114,66 @@ fn main() {
                     }
                 }
             }
+        }
+
+        // grid velocity update
+        for i in 0..NUM_CELLS {
+            let cell = &mut grid[i];
+
+            if cell.mass > 0.0 {
+                // convert momentum to vel
+                cell.vel /= cell.mass;
+                cell.vel += DT * Vec2::new(0.0, GRAVITY);
+
+                // boundary conditions
+                let x = i / N;
+                let y = i % N;
+                if x < 2 || x > N - 3 { cell.vel.x = 0.0; }
+                if y < 2 || y > N - 3 { cell.vel.y = 0.0; }
+            }
+        }
+
+        //  grid to particle
+        for p in &mut particles {
+            p.vel = Vec2::zeros();
+
+            let weights = calc_weights(p);
+
+            let mut b = Mat22::zeros();
+            for gx in 0..3 {
+                for gy in 0..3 {
+                    let weight = weights[gx].x * weights[gy].y;
+
+                    let cell_id = Vec2i::new((p.pos.x * N as Real) as i32 + gx as i32 - 1, (p.pos.y * N as Real) as i32 + gy as i32 - 1);
+                    let cell_index = cell_id.x as usize * N + cell_id.y as usize;
+
+                    let cell_dist = Vec2::new(
+                        cell_id.x as Real / N as Real - p.pos.x + 0.5,
+                        cell_id.y as Real / N as Real - p.pos.y + 0.5
+                    );
+
+                    let weighted_velocity = grid[cell_index].vel * weight;
+
+                    let b_term = Mat22::new(
+                        weighted_velocity.x * cell_dist.x,
+                        weighted_velocity.x * cell_dist.y,
+                        weighted_velocity.y * cell_dist.x,
+                        weighted_velocity.y * cell_dist.y,
+                    );
+
+                    b += b_term;
+
+                    p.vel += weighted_velocity;
+                }
+            }
+
+            p.c = b * 4.0;
+
+            // advect particle
+            p.pos += p.vel * DT;
+
+            p.pos.x = p.pos.x.clamp( 0.0, 1.0);
+            p.pos.y = p.pos.y.clamp( 0.0, 1.0);
         }
     }
 }
