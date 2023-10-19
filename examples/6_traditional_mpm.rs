@@ -1,5 +1,6 @@
 use rand::Rng;
 use num_traits::Pow;
+use mpm2::canvas::Canvas;
 
 type Real = f32;
 type Vec2 = nalgebra::Vector2<Real>;
@@ -49,6 +50,7 @@ const NUM_CELLS : usize = N * N;
 const PARTICLE_COUNT : usize = 32;
 const DX : f32 = 1.0 / N as Real;
 const DT : f32 = 1.0;
+const FRAME_DT : f32 = 10.0;
 const GRAVITY : f32 = -0.05;
 
 fn calc_weights(p : &Particle) -> Vec::<Vec2> {
@@ -79,8 +81,16 @@ fn main() {
         }
     }
 
+    let mut canvas = mpm2::canvas_gif::CanvasGif::new(
+        std::path::Path::new("6.gif"), (800, 800),
+        &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587));
+    let mut istep = 0;
+
     // simulation loop
-    {
+    loop {
+        istep += 1;
+        dbg!(istep);
+
         // reset the grid
         {
             for cell in &mut grid {
@@ -172,8 +182,20 @@ fn main() {
             // advect particle
             p.pos += p.vel * DT;
 
-            p.pos.x = p.pos.x.clamp( 0.0, 1.0);
-            p.pos.y = p.pos.y.clamp( 0.0, 1.0);
+            p.pos.x = p.pos.x.clamp( 0.1, 0.9);
+            p.pos.y = p.pos.y.clamp( 0.1, 0.9);
+        }
+
+        if istep % ((FRAME_DT / DT) as i32) == 0 {
+            canvas.clear(0);
+            for p in particles.iter() {
+                canvas.paint_circle(
+                    p.pos.x * canvas.width as Real,
+                    p.pos.y * canvas.height as Real,
+                    2.,
+                    1);
+            }
+            canvas.write();
         }
     }
 }
