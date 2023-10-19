@@ -1,6 +1,5 @@
 use rand::Rng;
 use num_traits::Pow;
-use mpm2::canvas::Canvas;
 
 type Real = f32;
 type Vec2 = nalgebra::Vector2<Real>;
@@ -19,9 +18,9 @@ struct Particle {
 impl Particle {
     fn new() -> Self {
         Self {
-            pos : Vec2::new(0.0, 0.0),
-            vel : Vec2::new(0.0, 0.0),
-            c : Mat22::new(0.0, 0.0, 0.0, 0.0),
+            pos : Vec2::zeros(),
+            vel : Vec2::zeros(),
+            c : Mat22::zeros(),
             mass : 1.0,
             dummy : 0.0,
         }
@@ -49,17 +48,22 @@ const N : usize = 32;
 const NUM_CELLS : usize = N * N;
 const PARTICLE_COUNT : usize = 32;
 const DX : f32 = 1.0 / N as Real;
-const DT : f32 = 1.0;
-const FRAME_DT : f32 = 10.0;
-const GRAVITY : f32 = -0.05;
+const DT : f32 = 1e-1;
+const FRAME_DT : f32 = 0.1;
+const GRAVITY : f32 = -0.1;
 
-fn calc_weights(p : &Particle) -> Vec::<Vec2> {
-    let cell_diff = Vec2::new(p.pos.x % DX, p.pos.y  % DX);
-    let mut weights = vec![Vec2::new(0.0, 0.0); 3];
-    weights[0] = 0.5 * Vec2::new((0.5 - cell_diff.x).pow(2.0), (0.5 - cell_diff.y).pow(2.0));
-    weights[1] = 0.75 * Vec2::new((cell_diff.x).pow(2.0), (cell_diff.y).pow(2.0));
-    weights[2] = 0.5 * Vec2::new((0.5 + cell_diff.x).pow(2.0), (0.5 + cell_diff.y).pow(2.0));
-    weights
+fn calc_weights(p : &Particle) -> [Vec2; 3] {
+    let base_coord = Vec2::new(p.pos.x * N as Real - 0.5, p.pos.y * N as Real - 0.5);
+    let base_coord = Vec2i::new(base_coord.x as i32, base_coord.y as i32);
+    let fx = p.pos * N as Real - base_coord.cast::<Real>();
+    let a = Vec2::repeat(1.5) - fx;
+    let b = fx - Vec2::repeat(1.0);
+    let c = fx - Vec2::repeat(0.5);
+    [
+        0.5 * a.component_mul(&a),
+        Vec2::repeat(0.75) - b.component_mul(&b),
+        0.5 * c.component_mul(&c)
+    ]
 }
 
 fn main() {
@@ -75,8 +79,8 @@ fn main() {
                 0.1 + i as Real / PARTICLE_COUNT as Real * 0.8,
                 0.5);
             particles[i].vel = Vec2::new(
-                rng.gen::<Real>() - 0.5,
-                rng.gen::<Real>() - 0.5 + 2.75
+                0.3 * (rng.gen::<Real>() - 0.5),
+                0.3 * (rng.gen::<Real>() + 1.2)
             ) * 0.5;
         }
     }
@@ -177,7 +181,7 @@ fn main() {
                 }
             }
 
-            p.c = b * 4.0;
+            p.c = b * 4.0 * DX * DX;
 
             // advect particle
             p.pos += p.vel * DT;
