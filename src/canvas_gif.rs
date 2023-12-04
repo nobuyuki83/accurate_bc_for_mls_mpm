@@ -23,7 +23,7 @@ impl CanvasGif {
                 res
             };
             gif::Encoder::new(
-                std::fs::File::create(&path_).unwrap(),
+                std::fs::File::create(path_).unwrap(),
                 size.0.try_into().unwrap(),
                 size.1.try_into().unwrap(),
                 &global_palette)

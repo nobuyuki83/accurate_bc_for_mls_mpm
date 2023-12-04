@@ -105,6 +105,7 @@ impl Canvas {
         }
     }
 
+    #[allow(clippy::identity_op)]
     pub fn paint_circle<Real>(&mut self, x: Real, y: Real, rad: Real, color: i32)
     where Real: num_traits::Float + 'static + AsPrimitive<i64>,
           i64: AsPrimitive<Real>,
@@ -119,6 +120,7 @@ impl Canvas {
         }
     }
 
+    #[allow(clippy::identity_op)]
     pub fn paint_line<Real>(&mut self, x0: Real, y0: Real, x1: Real, y1: Real, rad: Real, color: i32)
         where Real: num_traits::Float + 'static + AsPrimitive<i64>,
               i64: AsPrimitive<Real>,
@@ -133,6 +135,7 @@ impl Canvas {
         }
     }
 
+    #[allow(clippy::identity_op)]
     pub fn clear(&mut self, color: i32) {
         let (r,g,b) = rgb(color);
         for ih in 0..self.height {
@@ -147,7 +150,7 @@ impl Canvas {
     pub fn write(&mut self, path_: &std::path::Path) {
         // For reading and opening files
         let file = std::fs::File::create(path_).unwrap();
-        let ref mut w = std::io::BufWriter::new(file);
+        let w = std::io::BufWriter::new(file);
         let mut encoder = png::Encoder::new(
             w,
             self.width.try_into().unwrap(),

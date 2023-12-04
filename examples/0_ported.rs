@@ -73,7 +73,7 @@ fn mpm2_particle2grid(
 
     // P2G
     for p in particles {
-        let base_coord = p.x * inv_dx - Vector::repeat(0.5_f32 as Real );
+        let base_coord = p.x * inv_dx - Vector::repeat(0.5_f32 as Real);
         let base_coord = nalgebra::Vector2::<i32>::new(base_coord.x as i32, base_coord.y as i32);
         let fx = p.x * inv_dx - base_coord.cast::<Real>();
         let w = {
@@ -171,7 +171,7 @@ fn mpm2_grid2particle(
         let oldJ0 = F0.determinant();
         if is_plastic {  // updating deformation gradient tensor by clamping the eignvalues
             let svd = F0.svd(true, true);
-            let svd_u0 :Matrix = svd.u.unwrap();
+            let svd_u0: Matrix = svd.u.unwrap();
             let mut sig0: Matrix = Matrix::from_diagonal(&svd.singular_values);
             let svd_v0 = svd.v_t.unwrap().transpose();
             for i in 0..2 {  // Snow Plasticity
@@ -188,7 +188,7 @@ fn mpm2_grid2particle(
 fn main() {
     let mut particles = Vec::<Particle>::new();
     {
-        let mut rng : rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8;32]);
+        let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
         add_object(&mut particles, Vector::new(0.55, 0.45), 1, &mut rng);
         add_object(&mut particles, Vector::new(0.45, 0.65), 2, &mut rng);
         add_object(&mut particles, Vector::new(0.55, 0.85), 3, &mut rng);

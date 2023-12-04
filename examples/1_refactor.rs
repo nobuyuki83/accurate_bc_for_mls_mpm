@@ -1,9 +1,6 @@
-/// example ported from  https://github.com/yuanming-hu/taichi_mpm
+//! refactored example from https://github.com/yuanming-hu/taichi_mpm
 
 extern crate core;
-
-use std::ops::Add;
-use mpm2::canvas;
 
 use num_traits::identities::Zero;
 
@@ -13,17 +10,18 @@ type Matrix = nalgebra::Matrix2<Real>;
 
 #[derive(Debug)]
 struct Particle {
+    /// Position
     x: Vector,
-    // Position
+    /// Velocity
     v: Vector,
-    // Velocity
-    F: Matrix,
-    // Deformation gradient
-    C: Matrix,
-    // Affine momentum from APIC
-    Jp: Real,
-    // Determinant of the deformation gradient (i.e. volume)
-    c: u8,     // Color
+    /// Deformation gradient
+    defgrad: Matrix,
+    /// gradient of momentum from MLS
+    velograd: Matrix,
+    /// Determinant of the deformation gradient matrix
+    det_defgrad_plastic: Real,
+    /// Color
+    c: u8,
 }
 
 impl Particle {
@@ -31,15 +29,15 @@ impl Particle {
         Self {
             x: x_,
             v: Vector::zeros(),
-            F: Matrix::identity(),
-            C: Matrix::zeros(),
-            Jp: 1.,
+            defgrad: Matrix::identity(),
+            velograd: Matrix::zeros(),
+            det_defgrad_plastic: 1.,
             c: c_,
         }
     }
 }
 
-// Seed particles with position and color
+/// Seed particles with position and color
 fn add_object(
     particles: &mut Vec<Particle>,
     center: Vector,
@@ -72,8 +70,8 @@ fn grid_datas(pos_in: &Vector, dx: Real, inv_dx: Real, n: usize) -> Vec<(usize, 
     };
     let mut res = Vec::<(usize, Vector, Real)>::new();
     res.reserve(9);
-    for i in 0..3 as usize {
-        for j in 0..3 as usize {
+    for i in 0..3_usize {
+        for j in 0..3_usize {
             let dpos = Vector::new(
                 (i as Real - fx.x) * dx,
                 (j as Real - fx.y) * dx);
@@ -107,10 +105,10 @@ fn mpm2_particle2grid(
     // P2G
     for p in particles {
         let affine = { // (affine * dx) -> delta momentum
-            let pf = mpm2::pf(&p.F, hardening, young, nu, p.Jp);
+            let pf = mpm2::pf(&p.defgrad, hardening, young, nu, p.det_defgrad_plastic);
             let dinv = 4. * inv_dx * inv_dx;
             let stress = -(dt * vol) * (dinv * pf);
-            stress + particle_mass * p.C
+            stress + particle_mass * p.velograd
         };
 
         let gds = grid_datas(&p.x, dx, inv_dx, n);
@@ -128,14 +126,14 @@ fn mpm2_particle2grid(
 
 fn mpm2_grid2particle(
     particles: &mut Vec::<Particle>,
-    grid: &Vec<nalgebra::Vector3::<Real>>,
+    grid: &[nalgebra::Vector3::<Real>],
     ngrid: usize,
     dt: Real,
     is_plastic: bool) {
     let dx = 1.0 / ngrid as Real;
     let inv_dx = 1. / dx;
     for p in particles {
-        p.C.set_zero();
+        p.velograd.set_zero();
         p.v.set_zero();
         let gds = grid_datas(&p.x, dx, inv_dx, ngrid);
         for &gd in gds.iter() {
@@ -146,17 +144,16 @@ fn mpm2_grid2particle(
             let t: Matrix = Matrix::new(
                 grid_v.x * dpos.x, grid_v.x * dpos.y,
                 grid_v.y * dpos.x, grid_v.y * dpos.y);
-            p.C += 4. * inv_dx * inv_dx * weight * t; // gradient of velocity, C*dx = dv
+            p.velograd += 4. * inv_dx * inv_dx * weight * t; // gradient of velocity, C*dx = dv
         }
         p.x += dt * p.v;  // step-time
-        let mut F0: Matrix = (Matrix::identity() + dt * p.C) * p.F; // step-time
-        let oldJ0 = F0.determinant();
+        let mut defgrad_cand: Matrix = (Matrix::identity() + dt * p.velograd) * p.defgrad; // step-time
+        let det_defgrad_cand = defgrad_cand.determinant();
         if is_plastic {  // updating deformation gradient tensor by clamping the eignvalues
-            F0 = mpm2::clip_strain(&F0);
+            defgrad_cand = mpm2::clip_strain(&defgrad_cand);
         }
-        let Jp_new0: Real = mpm2::myclamp(p.Jp * oldJ0 / F0.determinant(), 0.6, 20.0);
-        p.Jp = Jp_new0;
-        p.F = F0;
+        p.det_defgrad_plastic = mpm2::myclamp(p.det_defgrad_plastic * det_defgrad_cand / defgrad_cand.determinant(), 0.6, 20.0);
+        p.defgrad = defgrad_cand;
     }
 }
 
@@ -173,6 +170,8 @@ fn main() {
     const HARDENING: Real = 10.0; // Snow HARDENING factor
     const YOUNG: Real = 1e4;          // Young's Modulus
     const POISSON: Real = 0.2;         // Poisson ratio
+    // const YOUNG: Real = 1e0;          // Young's Modulus
+    // const POISSON: Real = 0.49999;         // Poisson ratio
     const VOL: Real = 1.0;
     const PARTICLE_MASS: Real = 1.0;
 
@@ -200,7 +199,7 @@ fn main() {
                 for jgrid in 0..M {  // For all grid nodes
                     let g0 = &mut grid[jgrid * M + igrid];
                     if g0.z <= 0. { continue; } // grid is empty
-                    *g0 = *g0 / g0.z;
+                    *g0 /= g0.z;
                     *g0 += DT * nalgebra::Vector3::new(0., -200., 0.);
                     let boundary = 0.05;
                     let x = igrid as Real / N as Real;
@@ -208,10 +207,8 @@ fn main() {
                     if x < boundary || x > 1. - boundary || y > 1. - boundary {
                         *g0 = nalgebra::Vector3::repeat(0.); // Sticky
                     }
-                    if y < boundary {
-                        if g0.y < 0. {
-                            g0.y = 0.;
-                        }
+                    if y < boundary && g0.y < 0. {
+                        g0.y = 0.;
                     }
                 }
             }
@@ -231,6 +228,7 @@ fn main() {
             }
             canvas.write();
         }
+        if istep > 3000 { break; }
     }
 }
 

@@ -4,6 +4,7 @@ use num_traits::AsPrimitive;
 
 pub mod canvas;
 pub mod canvas_gif;
+pub mod background;
 
 pub fn polar_decomposition<T>(
     m: &nalgebra::Matrix2::<T>)
@@ -39,19 +40,19 @@ pub fn pf<Real>(
     hardening: Real,
     young: Real,
     nu: Real,
-    Jp: Real
-) -> nalgebra::Matrix2<Real>
+    det_defgrad_plastic: Real)
+    -> nalgebra::Matrix2<Real>
 where Real: nalgebra::RealField + num_traits::Float
 {
     let one = Real::one();
     let two = one + one;
     let mu_0 = young / (two * (one + nu));
     let lambda_0 = young * nu / ((one + nu) * (one - two * nu));
-    let e: Real = num_traits::Float::exp(hardening * (one - Jp));
+    let e: Real = num_traits::Float::exp(hardening * (one - det_defgrad_plastic));
     let mu = mu_0 * e;
     let lambda = lambda_0 * e;
     let volratio: Real = defgrad.determinant(); // J
-    let (r, _s) = polar_decomposition(&defgrad);
+    let (r, _s) = polar_decomposition(defgrad);
     (defgrad - r).scale(two * mu) * (defgrad).transpose() + nalgebra::Matrix2::<Real>::identity().scale(lambda * (volratio - one) * volratio)
 }
 
