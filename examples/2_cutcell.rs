@@ -86,5 +86,5 @@ fn main() {
             4., 0x00ff00ff);
     }
 
-    canvas.write(&std::path::Path::new("2.png"));
+    canvas.write(&std::path::Path::new("target/2.png"));
 }

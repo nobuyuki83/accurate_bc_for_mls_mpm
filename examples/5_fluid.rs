@@ -8,16 +8,12 @@ type Real = f64;
 type Vector = nalgebra::Vector2<Real>;
 type Matrix = nalgebra::Matrix2<Real>;
 
-fn mpm2_particle2grid(
+fn mpm2_p2g_first(
     grid: &mut Vec<nalgebra::Vector3::<Real>>,
     n: usize,
     particles: &Vec::<mpm2::particle_a::Particle<Real>>,
-    vol: Real,
-    particle_mass: Real,
-    dt: Real,
-    hardening: Real,
-    young: Real,
-    nu: Real) {
+    particle_mass: Real)
+{
     assert_eq!(grid.len(), (n + 1) * (n + 1));
     let dx: Real = 1.0 / n as Real;
     let inv_dx: Real = 1.0 / dx;
@@ -27,31 +23,59 @@ fn mpm2_particle2grid(
 
     // P2G
     for p in particles {
-        let stress = { // (affine * dx) -> delta momentum
-            let pf = mpm2::pf(&p.defgrad, hardening, young, nu, p.det_defgrad_plastic);
-            let dinv = 4. * inv_dx * inv_dx;
-            let stress = -(dt * vol) * (dinv * pf); // dt * volume * force = momentum grad
-            stress
-        };
         let gds = mpm2::grid_datas(&p.x, dx, inv_dx, n);
         for &gd in gds.iter() {
-            let dv = p.velograd * gd.1; // gradient correction of velocity
-            let dm = stress * gd.1; // increase of momentum due to stress
-            let mass_x_velocity = nalgebra::Vector3::<Real>::new(
-                particle_mass * (p.v.x + dv.x) + dm.x,
-                particle_mass * (p.v.y + dv.y) + dm.y,
+            let dv = p.velograd * gd.1; // increase of momentum
+            let momentum = nalgebra::Vector3::<Real>::new(
+                particle_mass * (p.v.x + dv.x),
+                particle_mass * (p.v.y + dv.y),
                 particle_mass);
-            grid[gd.0] += gd.2 * mass_x_velocity;
+            grid[gd.0] += gd.2 * momentum;
         }
     }
 }
 
-fn mpm2_grid2particle(
+fn mpm2_p2g_second(
+    grid: &mut Vec<nalgebra::Vector3::<Real>>,
+    n: usize,
+    particles: &Vec::<mpm2::particle_a::Particle<Real>>,
+    particle_mass: Real,
+    dt: Real) {
+    assert_eq!(grid.len(), (n + 1) * (n + 1));
+    let dx: Real = 1.0 / n as Real;
+    let inv_dx: Real = 1.0 / dx;
+
+    let eos_stiffness = 10.0e+1_f64;
+    let eos_power = 4_i32;
+    let dynamic_viscosity = 3e-1f64;
+    // P2G
+    for p in particles {
+        let gds = mpm2::grid_datas(&p.x, dx, inv_dx, n);
+        let mut density = 0.;
+        for &gd in gds.iter() {
+            density += grid[gd.0].z * gd.2;
+        }
+        let volume = particle_mass / density;
+        let pressure = eos_stiffness * ((density/5.).powi(eos_power)-1.); // flag?
+        let pressure = pressure.max(-0.1);
+        let stress =  Matrix::new(
+            -pressure, 0.,
+            0., -pressure) + (p.velograd + p.velograd.transpose()).scale(dynamic_viscosity);
+        let dinv = 4. * inv_dx * inv_dx;
+        let stress = -(dt * volume) * (dinv * stress); // dt * volume * force = momentum grad
+        for &gd in gds.iter() {
+            let dm = stress * gd.1; // increase of momentum due to stress
+            grid[gd.0].x += gd.2 * particle_mass * dm.x;
+            grid[gd.0].y += gd.2 * particle_mass * dm.y;
+        }
+    }
+}
+
+fn mpm2_g2p(
     particles: &mut Vec::<mpm2::particle_a::Particle::<Real>>,
     grid: &[nalgebra::Vector3::<Real>],
     ngrid: usize,
-    dt: Real,
-    is_plastic: bool) {
+    dt: Real) {
     let dx = 1.0 / ngrid as Real;
     let inv_dx = 1. / dx;
     for p in particles {
@@ -69,13 +93,7 @@ fn mpm2_grid2particle(
             p.velograd += 4. * inv_dx * inv_dx * weight * t; // gradient of velocity, C*dx = dv
         }
         p.x += dt * p.v;  // step-time
-        let mut defgrad_cand: Matrix = (Matrix::identity() + dt * p.velograd) * p.defgrad; // step-time
-        let det_defgrad_cand = defgrad_cand.determinant();
-        if is_plastic {  // updating deformation gradient tensor by clamping the eignvalues
-            defgrad_cand = mpm2::clip_strain(&defgrad_cand);
-        }
-        p.det_defgrad_plastic = mpm2::myclamp(p.det_defgrad_plastic * det_defgrad_cand / defgrad_cand.determinant(), 0.6, 20.0);
-        p.defgrad = defgrad_cand;
+        p.defgrad = (Matrix::identity() + dt * p.velograd) * p.defgrad; // step-time
     }
 }
 
@@ -89,12 +107,6 @@ fn main() {
     }
 
     const DT: Real = 1e-4;
-    const HARDENING: Real = 10.0; // Snow HARDENING factor
-    const YOUNG: Real = 1e4;          // Young's Modulus
-    const POISSON: Real = 0.2;         // Poisson ratio
-    // const YOUNG: Real = 1e0;          // Young's Modulus
-    // const POISSON: Real = 0.49999;         // Poisson ratio
-    const VOL: Real = 1.0;
     const PARTICLE_MASS: Real = 1.0;
 
     const N: usize = 80;
@@ -103,19 +115,30 @@ fn main() {
 
     const FRAME_DT: Real = 1e-3;
     let mut canvas = mpm2::canvas_gif::CanvasGif::new(
-        std::path::Path::new("target/1.gif"), (800, 800),
+        std::path::Path::new("target/5.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587));
+    canvas.clear(0);
+    for p in particles.iter() {
+        canvas.paint_circle(p.x.x * canvas.width as Real,
+                            p.x.y * canvas.height as Real,
+                            2., p.c);
+    }
+    canvas.write();
     let mut istep = 0;
 
     loop {
         istep += 1;
         dbg!(istep);
-        mpm2_particle2grid(&mut grid,
-                           N,
-                           &particles,
-                           VOL,
-                           PARTICLE_MASS,
-                           DT, HARDENING, YOUNG, POISSON);
+        mpm2_p2g_first(
+            &mut grid,
+            N,
+            &particles,
+            PARTICLE_MASS);
+        mpm2_p2g_second(
+            &mut grid,
+            N,
+            &particles,
+            PARTICLE_MASS, DT);
         {
             for igrid in 0..M {
                 for jgrid in 0..M {  // For all grid nodes
@@ -135,12 +158,11 @@ fn main() {
                 }
             }
         }
-        mpm2_grid2particle(
+        mpm2_g2p(
             &mut particles,
             &grid,
             N,
-            DT,
-            true);
+            DT);
         if istep % ((FRAME_DT / DT) as i32) == 0 {
             canvas.clear(0);
             for p in particles.iter() {

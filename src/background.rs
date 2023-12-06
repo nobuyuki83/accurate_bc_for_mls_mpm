@@ -39,7 +39,7 @@ where Real: num_traits::Float + Copy + 'static + nalgebra::RealField + num_trait
             let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([14_u8; 32]);
             let center = nalgebra::Vector2::<Real>::new(0.5f64.as_(), 0.35f64.as_());
             let mut ps = Vec::<nalgebra::Vector2::<Real>>::new();
-            for _i in 0..200 {
+            for _i in 0..400 {
                 let x: Real = (rng.gen::<Real>() * two - Real::one()) * rad + center[0];
                 let y: Real = (rng.gen::<Real>() * two - Real::one()) * rad + center[1];
                 let p = nalgebra::Vector2::<Real>::new(x, y);
