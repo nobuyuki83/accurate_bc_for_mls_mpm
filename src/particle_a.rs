@@ -19,7 +19,7 @@ pub struct Particle<Real> {
 impl<Real> Particle<Real>
 where Real: nalgebra::RealField
 {
-    fn new(x_: nalgebra::Vector2::<Real>, c_: u8) -> Self {
+    pub fn new(x_: nalgebra::Vector2::<Real>, c_: u8) -> Self {
         Self {
             x: x_,
             v: nalgebra::Vector2::<Real>::zeros(),
@@ -34,6 +34,7 @@ where Real: nalgebra::RealField
 /// Seed particles with position and color
 pub fn add_object<Real>(
     particles: &mut Vec<Particle<Real>>,
+    num_particles: usize,
     center: nalgebra::Vector2::<Real>,
     c: u8,
     rng: &mut rand::rngs::StdRng)
@@ -42,7 +43,7 @@ pub fn add_object<Real>(
         f64: AsPrimitive<Real>
 {
     use rand::Rng;
-    for _i in 0..1000 {
+    for _i in 0..num_particles {
         let x: Real = (rng.gen::<Real>() * 2f64.as_() - Real::one()) * 0.08f64.as_() + center.x;
         let y: Real = (rng.gen::<Real>() * 2f64.as_() - Real::one()) * 0.08f64.as_() + center.y;
         let p = Particle::new(nalgebra::Vector2::<Real>::new(x, y), c);

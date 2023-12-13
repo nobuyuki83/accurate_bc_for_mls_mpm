@@ -101,22 +101,33 @@ fn mpm2_g2p(
 fn main() {
     let mut particles = Vec::<mpm2::particle_a::Particle::<Real>>::new();
 
-    const DT: Real = 1e-4;
+    const DT: Real = 8e-5;
 
     const EOS_STIFFNESS: Real = 10.0e+1_f64;
     const EOS_POWER: i32 = 4_i32;
     const DYNAMIC_VISCOSITY: Real = 3e-1f64;
     const TARGET_DENSITY: Real = 40_000_f64; // mass par unit square
 
-    let (area, num_particle) = {
-        let num_particles = 1000;
+    //////
+
+    let area = {
         let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
-        mpm2::particle_a::add_object(&mut particles, num_particles,Vector::new(0.55, 0.45), 1, &mut rng);
-        mpm2::particle_a::add_object(&mut particles, num_particles,Vector::new(0.45, 0.65), 2, &mut rng);
-        mpm2::particle_a::add_object(&mut particles, num_particles,Vector::new(0.55, 0.85), 3, &mut rng);
-        (0.08*0.08*4.*3. as Real, num_particles* 3usize)
+        let cell_len = 0.007;
+        // let vtx2xy0 = vec!(0.47, 0.37, 0.63, 0.37, 0.63, 0.53, 0.47, 0.53);
+        let vtx2xy0 = del_msh::polyloop2::from_pentagram(&[0.55,0.45],0.13);
+        let area0 = del_msh::polyloop2::area(&vtx2xy0);
+        let xys0 = del_msh::polyloop2::to_uniform_density_random_points(&vtx2xy0, cell_len, &mut rng);
+        xys0.chunks(2).for_each(|v| particles.push( mpm2::particle_a::Particle::new(nalgebra::Vector2::<Real>::new(v[0], v[1]), 1) ) );
+        //
+        // let vtx2xy1 = vec!(0.37, 0.57, 0.53, 0.57, 0.53, 0.73, 0.37, 0.73);
+        let vtx2xy1 = del_msh::polyloop2::from_pentagram(&[0.45,0.65],0.13);
+        let area1 = del_msh::polyloop2::area(&vtx2xy1);
+        let xys1 = del_msh::polyloop2::to_uniform_density_random_points(&vtx2xy1, cell_len, &mut rng);
+        xys1.chunks(2).for_each(|v| particles.push( mpm2::particle_a::Particle::new(nalgebra::Vector2::<Real>::new(v[0], v[1]), 2) ) );
+        //
+        area0 + area1
     };
-    let particle_mass: Real = area * TARGET_DENSITY / (num_particle as Real);
+    let particle_mass: Real = area * TARGET_DENSITY / (particles.len() as Real);
 
     const N: usize = 80;
     const M: usize = N + 1;
@@ -130,7 +141,7 @@ fn main() {
 
     const FRAME_DT: Real = 1e-3;
     let mut canvas = mpm2::canvas_gif::CanvasGif::new(
-        std::path::Path::new("target/5.gif"), (800, 800),
+        std::path::Path::new("target/6.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587));
     canvas.clear(0);
     for p in particles.iter() {
@@ -153,7 +164,8 @@ fn main() {
             &mut grid,
             N,
             &particles,
-            particle_mass, TARGET_DENSITY, EOS_STIFFNESS, EOS_POWER, DYNAMIC_VISCOSITY,
+            particle_mass, TARGET_DENSITY,
+            EOS_STIFFNESS, EOS_POWER, DYNAMIC_VISCOSITY,
             DT);
         {
             for igrid in 0..M {

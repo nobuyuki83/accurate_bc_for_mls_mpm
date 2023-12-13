@@ -76,7 +76,7 @@ where Real: num_traits::Float + Copy + 'static + nalgebra::RealField + num_trait
 
     pub fn xy(&self, ig: usize) -> nalgebra::Vector2::<Real> {
         assert!(ig < self.vm.len());
-        return if ig < self.m * self.m {
+        if ig < self.m * self.m {
             let h = ig / self.m;
             let w = ig - h * self.m;
             nalgebra::Vector2::<Real>::new(w.as_() * self.dx, h.as_() * self.dx)
