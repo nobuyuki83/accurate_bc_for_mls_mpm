@@ -129,9 +129,9 @@ fn main() {
     let mut particles = Vec::<mpm2::particle_a::Particle<Real>>::new();
     {
         let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
-        mpm2::particle_a::add_object::<Real>(&mut particles, Vector::new(0.55, 0.45), 1, &mut rng);
-        mpm2::particle_a::add_object::<Real>(&mut particles, Vector::new(0.45, 0.65), 2, &mut rng);
-        mpm2::particle_a::add_object::<Real>(&mut particles, Vector::new(0.55, 0.85), 3, &mut rng);
+        mpm2::particle_a::add_object::<Real>(&mut particles, 1000, Vector::new(0.55, 0.45), 1, &mut rng);
+        mpm2::particle_a::add_object::<Real>(&mut particles, 1000, Vector::new(0.45, 0.65), 2, &mut rng);
+        mpm2::particle_a::add_object::<Real>(&mut particles, 1000, Vector::new(0.55, 0.85), 3, &mut rng);
     }
 
     const DT: Real = 2e-5;
@@ -148,6 +148,10 @@ fn main() {
     let mut canvas = mpm2::canvas_gif::CanvasGif::new(
         std::path::Path::new("target/4.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587, 0xFFFFFF, 0xFF00FF));
+    let transform_to_scr = nalgebra::Matrix3::<Real>::new(
+        canvas.width as Real, 0., 0.,
+        0., -(canvas.height as Real), canvas.height as Real,
+        0., 0., 1.);
     let mut istep = 0;
 
     loop {
@@ -169,22 +173,16 @@ fn main() {
         if istep % ((FRAME_DT / DT) as i32) == 0 {
             canvas.clear(0);
             for p in particles.iter() {
-                canvas.paint_circle(
-                    p.x.x * canvas.width as Real,
-                    p.x.y * canvas.height as Real,
+                canvas.paint_point(p.x.x, p.x.y, &transform_to_scr,
                     2., p.c);
             }
             for p in &bg.points {
-                canvas.paint_circle(
-                    p.x * canvas.width as Real,
-                    p.y * canvas.height as Real,
+                canvas.paint_point(p.x, p.y, &transform_to_scr,
                     3., 4);
             }
             for ip in 0..bg.m*bg.m {
                 let p = bg.xy(ip);
-                canvas.paint_circle(
-                    p.x * canvas.width as Real,
-                    p.y * canvas.height as Real,
+                canvas.paint_point(p.x, p.y, &transform_to_scr,
                     1., 5);
             }
             canvas.write();

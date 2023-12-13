@@ -132,11 +132,14 @@ fn main() {
     let mut canvas = mpm2::canvas_gif::CanvasGif::new(
         std::path::Path::new("target/5.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587));
+    let transform_to_scr = nalgebra::Matrix3::<Real>::new(
+        canvas.width as Real, 0., 0.,
+        0., -(canvas.height as Real), canvas.height as Real,
+        0., 0., 1.);
     canvas.clear(0);
     for p in particles.iter() {
-        canvas.paint_circle(p.x.x * canvas.width as Real,
-                            p.x.y * canvas.height as Real,
-                            2., p.c);
+        canvas.paint_point(p.x.x, p.x.y, &transform_to_scr,
+                           2., p.c);
     }
     canvas.write();
     let mut istep = 0;
@@ -153,7 +156,8 @@ fn main() {
             &mut grid,
             N,
             &particles,
-            particle_mass, TARGET_DENSITY, EOS_STIFFNESS, EOS_POWER, DYNAMIC_VISCOSITY,
+            particle_mass, TARGET_DENSITY, EOS_STIFFNESS, EOS_POWER,
+            DYNAMIC_VISCOSITY,
             DT);
         {
             for igrid in 0..M {
@@ -182,9 +186,8 @@ fn main() {
         if istep % ((FRAME_DT / DT) as i32) == 0 {
             canvas.clear(0);
             for p in particles.iter() {
-                canvas.paint_circle(p.x.x * canvas.width as Real,
-                                    p.x.y * canvas.height as Real,
-                                    2., p.c);
+                canvas.paint_point(p.x.x, p.x.y, &transform_to_scr,
+                                   2., p.c);
             }
             canvas.write();
         }

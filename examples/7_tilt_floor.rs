@@ -1,4 +1,4 @@
-//! refactored example from https://github.com/yuanming-hu/taichi_mpm
+//! hoge
 
 extern crate core;
 
@@ -113,8 +113,7 @@ fn main() {
     let area = {
         let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
         let cell_len = 0.007;
-        // let vtx2xy0 = vec!(0.47, 0.37, 0.63, 0.37, 0.63, 0.53, 0.47, 0.53);
-        let vtx2xy0 = del_msh::polyloop2::from_pentagram(&[0.55, 0.45], 0.13);
+        let vtx2xy0 = del_msh::polyloop2::from_pentagram(&[0.25, 0.55], 0.13);
         let area0 = del_msh::polyloop2::area(&vtx2xy0);
         let xys0 = del_msh::polyloop2::to_uniform_density_random_points(&vtx2xy0, cell_len, &mut rng);
         xys0.chunks(2).for_each(
@@ -123,8 +122,7 @@ fn main() {
                     mpm2::particle_a::Particle::new(
                         nalgebra::Vector2::<Real>::new(v[0], v[1]), 1)));
         //
-        // let vtx2xy1 = vec!(0.37, 0.57, 0.53, 0.57, 0.53, 0.73, 0.37, 0.73);
-        let vtx2xy1 = del_msh::polyloop2::from_pentagram(&[0.45, 0.75], 0.17);
+        let vtx2xy1 = del_msh::polyloop2::from_pentagram(&[0.40, 0.75], 0.17);
         let area1 = del_msh::polyloop2::area(&vtx2xy1);
         let xys1 = del_msh::polyloop2::to_uniform_density_random_points(&vtx2xy1, cell_len, &mut rng);
         xys1.chunks(2).for_each(
@@ -150,16 +148,17 @@ fn main() {
         dbg!(density * (N * N) as Real);
     }
 
-    let boundary = 0.047;
+    let boundary = 0.067;
     let vtx2xy_boundary = [
-        boundary, boundary,
+        boundary, 0.5,
+        // boundary, boundary,
         1. - boundary, boundary,
         1. - boundary, 1. - boundary,
         boundary, 1. - boundary];
 
-    const FRAME_DT: Real = 1e-3;
+    const FRAME_DT: Real = 50e-3;
     let mut canvas = mpm2::canvas_gif::CanvasGif::new(
-        std::path::Path::new("target/6.gif"), (800, 800),
+        std::path::Path::new("target/7.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587, 0xffffff, 0xFF00FF));
     let transform_to_scr = nalgebra::Matrix3::<Real>::new(
         canvas.width as Real, 0., 0.,
@@ -201,14 +200,10 @@ fn main() {
                     *g0 += DT * nalgebra::Vector3::new(0., -200., 0.);
                     let x = i_grid as Real / N as Real;
                     let y = j_grid as Real / N as Real;
-                    // left, right, top is sticky
-                    if x < boundary || x > 1. - boundary || y > 1. - boundary {
-                        *g0 = nalgebra::Vector3::repeat(0.); // Sticky
+                    if del_msh::polyloop2::is_inside(&vtx2xy_boundary, &[x,y]) {
+                        continue;
                     }
-                    // bottom is full-slip
-                    if y < boundary && g0.y < 0. {
-                        g0.y = 0.;
-                    }
+                    *g0 = nalgebra::Vector3::repeat(0.); // Sticky
                 }
             }
         }
@@ -236,7 +231,7 @@ fn main() {
             }
             canvas.write();
         }
-        if istep > 3000 { break; }
+        if istep > 60000 { break; }
     }
 }
 

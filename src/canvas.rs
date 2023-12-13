@@ -6,7 +6,7 @@ pub struct Canvas {
     data: Vec<u8>,
 }
 
-pub fn pixels_in_circle<Real>(
+pub fn pixels_in_point<Real>(
     x: Real, y: Real, rad: Real,
     width: usize, height: usize) -> Vec<usize>
     where Real: num_traits::Float + 'static + AsPrimitive<i64>,
@@ -18,12 +18,6 @@ pub fn pixels_in_circle<Real>(
     let iwmax: i64 = (x + rad - half).floor().as_();
     let ihmin: i64 = (y - rad - half).ceil().as_();
     let ihmax: i64 = (y + rad - half).floor().as_();
-    /*
-    let iwmin: i64 = (x - rad).floor().as_();
-    let iwmax: i64 = (x + rad).floor().as_();
-    let ihmin: i64 = (y - rad).floor().as_();
-    let ihmax: i64 = (y + rad).floor().as_();
-     */
     let mut res = Vec::<usize>::new();
     for iw in iwmin..iwmax + 1 {
         if iw < 0 || iw >= width.try_into().unwrap() { continue; }
@@ -31,10 +25,8 @@ pub fn pixels_in_circle<Real>(
             if ih < 0 || ih >= height.try_into().unwrap() { continue; }
             let w: Real = iw.as_() + half; // pixel center
             let h: Real = ih.as_() + half; // pixel center
-//            let w: Real = iw.as_();
-//            let h: Real = ih.as_();
             if (w - x) * (w - x) + (h - y) * (h - y) > rad * rad { continue; }
-            let idata = (height - 1 - ih as usize) * width + iw as usize;
+            let idata = ih as usize * width + iw as usize;
             res.push(idata);
         }
     }
@@ -82,7 +74,7 @@ pub fn pixels_in_line<Real>(
                 (w-x0)*(w-x0) + (h-y0)*(h-y0) - sqlen * t * t
             };
             if sqdist > rad * rad { continue; }
-            let idata = (height - 1 - ih as usize) * width + iw as usize;
+            let idata = ih as usize * width + iw as usize;
             res.push(idata);
         }
     }
@@ -106,13 +98,17 @@ impl Canvas {
     }
 
     #[allow(clippy::identity_op)]
-    pub fn paint_circle<Real>(&mut self, x: Real, y: Real, rad: Real, color: i32)
-    where Real: num_traits::Float + 'static + AsPrimitive<i64>,
+    pub fn paint_point<Real>(
+        &mut self,
+        x: Real, y: Real, transform: &nalgebra::Matrix3::<Real>,
+        rad: Real, color: i32)
+    where Real: num_traits::Float + 'static + AsPrimitive<i64> + nalgebra::RealField,
           i64: AsPrimitive<Real>,
           f64: AsPrimitive<Real>
     {
         let (r,g,b) = rgb(color);
-        let pixs = pixels_in_circle(x,y,rad,self.width, self.height);
+        let a = transform * nalgebra::Vector3::<Real>::new(x, y, Real::one());
+        let pixs = pixels_in_point(a.x, a.y, rad, self.width, self.height);
         for idata in pixs {
             self.data[idata * 3 + 0] = r;
             self.data[idata * 3 + 1] = g;
@@ -121,13 +117,20 @@ impl Canvas {
     }
 
     #[allow(clippy::identity_op)]
-    pub fn paint_line<Real>(&mut self, x0: Real, y0: Real, x1: Real, y1: Real, rad: Real, color: i32)
-        where Real: num_traits::Float + 'static + AsPrimitive<i64>,
+    pub fn paint_line<Real>(
+        &mut self,
+        x0: Real, y0: Real,
+        x1: Real, y1: Real,
+        transform: &nalgebra::Matrix3::<Real>,
+        rad: Real, color: i32)
+        where Real: num_traits::Float + 'static + AsPrimitive<i64> + nalgebra::RealField,
               i64: AsPrimitive<Real>,
               f64: AsPrimitive<Real>
     {
         let (r,g,b) = rgb(color);
-        let pixs = pixels_in_line(x0,y0, x1, y1, rad, self.width, self.height);
+        let a0 = transform * nalgebra::Vector3::<Real>::new(x0,y0,Real::one());
+        let a1 = transform * nalgebra::Vector3::<Real>::new(x1,y1,Real::one());
+        let pixs = pixels_in_line(a0.x,a0.y, a1.x, a1.y, rad, self.width, self.height);
         for idata in pixs {
             self.data[idata * 3 + 0] = r;
             self.data[idata * 3 + 1] = g;

@@ -95,7 +95,7 @@ fn mpm2_particle2grid(
             let mu = mu_0 * e;
             let lambda = lambda_0 * e;
             let J: Real = p.F.determinant();
-            let (r, s) = mpm2::polar_decomposition(&p.F);
+            let (r, s) = del_geo::mat2::polar_decomposition(&p.F);
             let dinv = 4. * inv_dx * inv_dx;
             let pf = 2. * mu * (p.F - r) * (p.F).transpose() + lambda * (J - 1.) * J * Matrix::identity();
             let stress = -(dt * vol) * (dinv * pf);
@@ -207,8 +207,14 @@ fn main() {
 
     const FRAME_DT: Real = 1e-3;
     let mut canvas = mpm2::canvas_gif::CanvasGif::new(
-        std::path::Path::new("0.gif"), (800, 800),
+        std::path::Path::new("target/0.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587));
+    let transform_to_scr = nalgebra::Matrix3::<Real>::new(
+        canvas.width as Real, 0., 0.,
+        0., -(canvas.height as Real), canvas.height as Real,
+        0., 0., 1.);
+
+
     let mut istep = 0;
 
     loop {
@@ -221,15 +227,15 @@ fn main() {
                            PARTICLE_MASS,
                            DT, HARDENING, E, NU);
         {
-            for igrid in 0..M {
-                for jgrid in 0..M {  // For all grid nodes
-                    let g0 = &mut grid[jgrid * M + igrid];
+            for i_grid in 0..M {
+                for j_grid in 0..M {  // For all grid nodes
+                    let g0 = &mut grid[j_grid * M + i_grid];
                     if g0.z <= Real::zero() { continue; } // grid is empty
                     *g0 = *g0 / g0.z;
                     *g0 += DT * nalgebra::Vector3::new(0., -200., 0.);
                     let boundary = 0.05_f32;
-                    let x = igrid as f32 / N as f32;
-                    let y = jgrid as f32 / N as f32;
+                    let x = i_grid as f32 / N as f32;
+                    let y = j_grid as f32 / N as f32;
                     if x < boundary || x > 1. - boundary || y > 1. - boundary {
                         *g0 = nalgebra::Vector3::repeat(0.); // Sticky
                     }
@@ -250,9 +256,7 @@ fn main() {
         if istep % ((FRAME_DT / DT) as i32) == 0 {
             canvas.clear(0);
             for p in particles.iter() {
-                canvas.paint_circle(p.x.x * canvas.width as Real,
-                                    p.x.y * canvas.height as Real,
-                                    2., p.c);
+                canvas.paint_point(p.x.x, p.x.y, &transform_to_scr, 2., p.c);
             }
             canvas.write();
         }

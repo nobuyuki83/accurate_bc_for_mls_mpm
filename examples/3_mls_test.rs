@@ -61,14 +61,17 @@ fn main() {
     }
     {
         let mut canvas = mpm2::canvas::Canvas::new((800, 800));
+        let transform_to_scr = nalgebra::Matrix3::<f32>::new(
+            canvas.width as f32, 0., 0.,
+            0., -(canvas.height as f32), canvas.height as f32,
+            0., 0., 1.);
         canvas.clear(0x003300);
         for p in bg.points.iter() {
-            canvas.paint_circle(
-                p.x * canvas.width as Real,
-                p.y * canvas.height as Real,
+            canvas.paint_point(
+                p.x, p.y, &transform_to_scr,
                 2.0, 0xffffff);
         }
-        canvas.write(std::path::Path::new("3.png"));
+        canvas.write(std::path::Path::new("target/3.png"));
     }
 }
 
