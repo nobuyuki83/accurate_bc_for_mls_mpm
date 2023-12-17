@@ -10,7 +10,7 @@ type Matrix = nalgebra::Matrix2<Real>;
 
 fn mpm2_particle2grid(
     bg: &mut mpm2::background::Background<Real>,
-    particles: &Vec::<mpm2::particle_a::Particle<Real>>,
+    particles: &Vec::<mpm2::particle_solid::ParticleSolid<Real>>,
     vol: Real,
     particle_mass: Real,
     dt: Real,
@@ -68,7 +68,7 @@ fn mpm2_particle2grid(
 }
 
 fn mpm2_grid2particle(
-    particles: &mut Vec::<mpm2::particle_a::Particle<Real>>,
+    particles: &mut Vec::<mpm2::particle_solid::ParticleSolid<Real>>,
     bg: &mpm2::background::Background::<Real>,
     dt: Real,
     is_plastic: bool,
@@ -126,12 +126,12 @@ fn mpm2_grid2particle(
 
 fn main() {
     let mut bg = mpm2::background::Background::<Real>::new(80);
-    let mut particles = Vec::<mpm2::particle_a::Particle<Real>>::new();
+    let mut particles = Vec::<mpm2::particle_solid::ParticleSolid<Real>>::new();
     {
         let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
-        mpm2::particle_a::add_object::<Real>(&mut particles, 1000, Vector::new(0.55, 0.45), 1, &mut rng);
-        mpm2::particle_a::add_object::<Real>(&mut particles, 1000, Vector::new(0.45, 0.65), 2, &mut rng);
-        mpm2::particle_a::add_object::<Real>(&mut particles, 1000, Vector::new(0.55, 0.85), 3, &mut rng);
+        mpm2::particle_solid::add_object::<Real>(&mut particles, 1000, Vector::new(0.55, 0.45), 1, &mut rng);
+        mpm2::particle_solid::add_object::<Real>(&mut particles, 1000, Vector::new(0.45, 0.65), 2, &mut rng);
+        mpm2::particle_solid::add_object::<Real>(&mut particles, 1000, Vector::new(0.55, 0.85), 3, &mut rng);
     }
 
     const DT: Real = 2e-5;

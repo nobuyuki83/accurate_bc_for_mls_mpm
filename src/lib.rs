@@ -5,7 +5,9 @@ use num_traits::AsPrimitive;
 pub mod canvas;
 pub mod canvas_gif;
 pub mod background;
-pub mod particle_a;
+pub mod background2;
+pub mod particle_solid;
+pub mod particle_fluid;
 
 pub fn myclamp<T>(
     v: T,

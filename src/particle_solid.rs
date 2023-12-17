@@ -1,7 +1,7 @@
 use num_traits::AsPrimitive;
 
 #[derive(Debug)]
-pub struct Particle<Real> {
+pub struct ParticleSolid<Real> {
     /// Position
     pub x: nalgebra::Vector2::<Real>,
     /// Velocity
@@ -16,7 +16,7 @@ pub struct Particle<Real> {
     pub c: u8,
 }
 
-impl<Real> Particle<Real>
+impl<Real> ParticleSolid<Real>
 where Real: nalgebra::RealField
 {
     pub fn new(x_: nalgebra::Vector2::<Real>, c_: u8) -> Self {
@@ -33,7 +33,7 @@ where Real: nalgebra::RealField
 
 /// Seed particles with position and color
 pub fn add_object<Real>(
-    particles: &mut Vec<Particle<Real>>,
+    particles: &mut Vec<ParticleSolid<Real>>,
     num_particles: usize,
     center: nalgebra::Vector2::<Real>,
     c: u8,
@@ -46,7 +46,7 @@ pub fn add_object<Real>(
     for _i in 0..num_particles {
         let x: Real = (rng.gen::<Real>() * 2f64.as_() - Real::one()) * 0.08f64.as_() + center.x;
         let y: Real = (rng.gen::<Real>() * 2f64.as_() - Real::one()) * 0.08f64.as_() + center.y;
-        let p = Particle::new(nalgebra::Vector2::<Real>::new(x, y), c);
+        let p = ParticleSolid::new(nalgebra::Vector2::<Real>::new(x, y), c);
         particles.push(p);
     }
 }

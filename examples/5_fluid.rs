@@ -11,7 +11,7 @@ type Matrix = nalgebra::Matrix2<Real>;
 fn mpm2_p2g_first(
     grid: &mut Vec<nalgebra::Vector3::<Real>>,
     n: usize,
-    particles: &Vec::<mpm2::particle_a::Particle<Real>>,
+    particles: &Vec::<mpm2::particle_solid::ParticleSolid<Real>>,
     particle_mass: Real)
 {
     assert_eq!(grid.len(), (n + 1) * (n + 1));
@@ -38,9 +38,9 @@ fn mpm2_p2g_first(
 fn mpm2_p2g_second(
     grid: &mut Vec<nalgebra::Vector3::<Real>>,
     n: usize,
-    particles: &Vec::<mpm2::particle_a::Particle<Real>>,
+    particles: &Vec::<mpm2::particle_solid::ParticleSolid<Real>>,
     particle_mass: Real,
-    target_density:Real,
+    target_density: Real,
     eos_stiffness: Real,
     eos_power: i32,
     dynamic_viscosity: Real,
@@ -55,11 +55,11 @@ fn mpm2_p2g_second(
         for &gd in gds.iter() {
             mass_par_cell += grid[gd.0].z * gd.2;
         }
-        let target_mass_par_cell = target_density*dx*dx;
+        let target_mass_par_cell = target_density * dx * dx;
         let volume = particle_mass / mass_par_cell;
-        let pressure = eos_stiffness * ((mass_par_cell /target_mass_par_cell).powi(eos_power)-1.);
+        let pressure = eos_stiffness * ((mass_par_cell / target_mass_par_cell).powi(eos_power) - 1.);
         let pressure = pressure.max(-0.1);
-        let stress =  Matrix::new(
+        let stress = Matrix::new(
             -pressure, 0.,
             0., -pressure) + (p.velograd + p.velograd.transpose()).scale(dynamic_viscosity);
         let dinv = 4. * inv_dx * inv_dx;
@@ -73,7 +73,7 @@ fn mpm2_p2g_second(
 }
 
 fn mpm2_g2p(
-    particles: &mut Vec::<mpm2::particle_a::Particle::<Real>>,
+    particles: &mut Vec::<mpm2::particle_solid::ParticleSolid::<Real>>,
     grid: &[nalgebra::Vector3::<Real>],
     ngrid: usize,
     dt: Real) {
@@ -99,10 +99,9 @@ fn mpm2_g2p(
 }
 
 fn main() {
-    let mut particles = Vec::<mpm2::particle_a::Particle::<Real>>::new();
+    let mut particles = Vec::<mpm2::particle_solid::ParticleSolid::<Real>>::new();
 
     const DT: Real = 1e-4;
-
     const EOS_STIFFNESS: Real = 10.0e+1_f64;
     const EOS_POWER: i32 = 4_i32;
     const DYNAMIC_VISCOSITY: Real = 3e-1f64;
@@ -111,10 +110,10 @@ fn main() {
     let (area, num_particle) = {
         let num_particles = 1000;
         let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
-        mpm2::particle_a::add_object(&mut particles, num_particles,Vector::new(0.55, 0.45), 1, &mut rng);
-        mpm2::particle_a::add_object(&mut particles, num_particles,Vector::new(0.45, 0.65), 2, &mut rng);
-        mpm2::particle_a::add_object(&mut particles, num_particles,Vector::new(0.55, 0.85), 3, &mut rng);
-        (0.08*0.08*4.*3. as Real, num_particles* 3usize)
+        mpm2::particle_solid::add_object(&mut particles, num_particles, Vector::new(0.55, 0.45), 1, &mut rng);
+        mpm2::particle_solid::add_object(&mut particles, num_particles, Vector::new(0.45, 0.65), 2, &mut rng);
+        mpm2::particle_solid::add_object(&mut particles, num_particles, Vector::new(0.55, 0.85), 3, &mut rng);
+        (0.08 * 0.08 * 4. * 3. as Real, num_particles * 3usize)
     };
     let particle_mass: Real = area * TARGET_DENSITY / (num_particle as Real);
 
@@ -123,9 +122,9 @@ fn main() {
     let mut grid: Vec<nalgebra::Vector3::<Real>> = vec!(nalgebra::Vector3::<Real>::new(0., 0., 0.); M * M);
 
     {
-        let area_pix = (2. * 0.08 * 2. * 0.08) * ((N*N) as Real);
-        let density: Real = 1000.0/area_pix;
-        dbg!(density*(N*N) as Real);
+        let area_pix = (2. * 0.08 * 2. * 0.08) * ((N * N) as Real);
+        let density: Real = 1000.0 / area_pix;
+        dbg!(density * (N * N) as Real);
     }
 
     const FRAME_DT: Real = 1e-3;

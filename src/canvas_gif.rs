@@ -65,6 +65,7 @@ impl CanvasGif {
         }
     }
 
+    #[allow(clippy::identity_op)]
     pub fn paint_polyloop<T>(
         &mut self,
         vtx2xy: &[T],
