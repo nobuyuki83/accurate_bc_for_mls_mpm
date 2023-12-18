@@ -97,6 +97,16 @@ impl Canvas {
         }
     }
 
+    pub fn paint_pixel(
+        &mut self,
+        iw: usize, ih: usize, r: u8, g: u8, b: u8)
+    {
+        let idata = ih * self.width + iw;
+        self.data[idata * 3 + 0] = r;
+        self.data[idata * 3 + 1] = g;
+        self.data[idata * 3 + 2] = b;
+    }
+
     #[allow(clippy::identity_op)]
     pub fn paint_point<Real>(
         &mut self,
@@ -135,6 +145,25 @@ impl Canvas {
             self.data[idata * 3 + 0] = r;
             self.data[idata * 3 + 1] = g;
             self.data[idata * 3 + 2] = b;
+        }
+    }
+
+    #[allow(clippy::identity_op)]
+    pub fn paint_polyloop<T>(
+        &mut self,
+        vtx2xy: &[T],
+        transform: &nalgebra::Matrix3::<T>,
+        point_size: T, color: i32)
+        where T: num_traits::Float + 'static + AsPrimitive<i64> + nalgebra::RealField,
+              f64: AsPrimitive<T>,
+              i64: AsPrimitive<T>
+    {
+        let n = vtx2xy.len() / 2;
+        for i in 0..n {
+            let j = (i + 1) % n;
+            self.paint_line(
+                vtx2xy[i * 2 + 0], vtx2xy[i * 2 + 1],
+                vtx2xy[j * 2 + 0], vtx2xy[j * 2 + 1], transform, point_size, color);
         }
     }
 
