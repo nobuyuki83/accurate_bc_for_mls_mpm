@@ -56,7 +56,7 @@ fn main() {
             1. - boundary, boundary,
             1. - boundary, 1. - boundary,
             boundary, 1. - boundary];
-        mpm2::background2::Grid::new(30, &vtx2xy_boundary, false)
+        mpm2::background2::Grid::new(30, &vtx2xy_boundary, false, false, 0.)
     };
 
     let mut canvas = mpm2::canvas::Canvas::new(

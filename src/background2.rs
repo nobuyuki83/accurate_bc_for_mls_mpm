@@ -34,7 +34,27 @@ impl<Real> Grid<Real>
           f64: num_traits::AsPrimitive<Real>,
           rand::distributions::Standard: rand::prelude::Distribution<Real>
 {
-    pub fn new(n: usize, vtx2xy_boundary: &[Real], is_sample_boundary: bool) -> Self {
+    // calc distance between a point p and a line segment a-b
+    fn point_line_dist(
+        p: nalgebra::Vector2::<Real>,
+        a: nalgebra::Vector2::<Real>, 
+        b: nalgebra::Vector2::<Real>) -> Real
+    {
+        let pa = p - a;
+        let pb = p - b;
+        if pa.dot(&(b - a)) < 0.as_() {
+            return pa.norm();
+        }
+        else if pb.dot(&(a - b)) < 0.as_() {
+            return pb.norm();
+        }
+        else {
+            return num_traits::Float::abs((b.y - a.y)*p.x - (b.x - a.x)*p.y + b.x*a.y - b.y*a.x) / (b - a).norm();
+        }
+    }
+
+    pub fn new(n: usize, vtx2xy_boundary: &[Real], is_sample_boundary: bool,
+        ignore_near_grid_point: bool, ignore_threshold: Real) -> Self {
         let dx = Real::one() / n.as_();
         let m = n + 1;
         let points = {
@@ -69,7 +89,31 @@ impl<Real> Grid<Real>
                     let x = i_grid.as_() / n.as_();
                     let y = j_grid.as_() / n.as_();
                     if del_msh::polyloop2::is_inside(vtx2xy_boundary, &[x, y]) {
-                        continue;
+                        // ignore grid points which is near the boundary points
+                        let mut is_too_near = false;
+                        if ignore_near_grid_point {
+                            let g = nalgebra::Vector2::<Real>::new(x, y);
+
+                            // visit all the boudnary
+                            let np = vtx2xy_boundary.len() / 2;
+                            for ip in 0..np {
+                                let jp = (ip + 1) % np;
+                                let pi = nalgebra::Vector2::<Real>::from_row_slice(
+                                    &vtx2xy_boundary[ip * 2 + 0..ip * 2 + 2]);
+                                let pj = nalgebra::Vector2::<Real>::from_row_slice(
+                                    &vtx2xy_boundary[jp * 2 + 0..jp * 2 + 2]);
+
+                                let dist = Self::point_line_dist(g, pi, pj);
+                                if dist < ignore_threshold {
+                                    is_too_near = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if !is_too_near {
+                            continue;
+                        }
                     }
                     is_inside[j_grid * m + i_grid] = false;
                 }

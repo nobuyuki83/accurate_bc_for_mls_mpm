@@ -197,6 +197,7 @@ fn main() {
     };
     let particle_mass: Real = area * TARGET_DENSITY / (particles.len() as Real);
 
+    let n: usize = 80;
     let mut bg = {
         let boundary = 0.047;
         let vtx2xy_boundary = [
@@ -205,7 +206,10 @@ fn main() {
             1. - boundary, boundary,
             1. - boundary, 1. - boundary,
             boundary, 1. - boundary];
-        mpm2::background2::Grid::new(80, &vtx2xy_boundary, true)
+        // augmented grid
+        mpm2::background2::Grid::new(n, &vtx2xy_boundary, true, true, 1 as Real / n as Real / 4 as Real)
+        // simple grid
+        // mpm2::background2::Grid::new(n, &vtx2xy_boundary, false, false, 0 as Real)
     };
 
     const FRAME_DT: Real = 1e-4;

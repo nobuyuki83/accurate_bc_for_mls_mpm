@@ -133,7 +133,7 @@ fn main() {
             1. - boundary, boundary,
             1. - boundary, 1. - boundary,
             boundary, 1. - boundary];
-        mpm2::background2::Grid::new(80, &vtx2xy_boundary, false)
+        mpm2::background2::Grid::new(80, &vtx2xy_boundary, false, false, 0 as Real)
     };
 
     const FRAME_DT: Real = 1e-3;
