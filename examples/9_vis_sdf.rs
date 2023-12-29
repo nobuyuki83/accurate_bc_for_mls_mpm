@@ -7,50 +7,49 @@ use num_traits::identities::Zero;
 type Real = f64;
 type Vector = nalgebra::Vector2<Real>;
 
-fn query_sdf(vtx2xy_boundary: &[Real], p: &nalgebra::Vector2::<Real>) -> Real
+// calc distance between a point p and a line segment a-b
+fn point_line_dist(
+    p: nalgebra::Vector2::<Real>,
+    a: nalgebra::Vector2::<Real>, 
+    b: nalgebra::Vector2::<Real>) -> Real
 {
-
+    let pa = p - a;
+    let pb = p - b;
+    if pa.dot(&(b - a)) < 0. as Real {
+        return pa.norm();
+    }
+    else if pb.dot(&(a - b)) < 0. as Real {
+        return pb.norm();
+    }
+    else {
+        return num_traits::Float::abs((b.y - a.y)*p.x - (b.x - a.x)*p.y + b.x*a.y - b.y*a.x) / (b - a).norm();
+    }
 }
 
-fn interpolation(
-    bg: &mpm2::background2::Grid::<Real>,
-    x: &Vector,
-    is_sample_exterior: bool) -> Real
+fn query_sdf(
+    vtx2xy_boundary: &[Real], 
+    p: &nalgebra::Vector2::<Real>) -> Real
 {
-    let gds = if is_sample_exterior {
-        bg.near_grid_points(x)
-    } else {
-        bg.near_interior_grid_boundary_points(x)
-    };
-    let mat_d_inv = {
-        let mut mat_d = nalgebra::Matrix3::<Real>::zero();
-        for &gd in gds.iter() {
-            let dpos = gd.1;
-            let w = gd.2;
-            mat_d[(0, 0)] += w;
-            mat_d[(0, 1)] += w * dpos.x;
-            mat_d[(0, 2)] += w * dpos.y;
-            mat_d[(1, 0)] += w * dpos.x;
-            mat_d[(1, 1)] += w * dpos.x * dpos.x;
-            mat_d[(1, 2)] += w * dpos.x * dpos.y;
-            mat_d[(2, 0)] += w * dpos.y;
-            mat_d[(2, 1)] += w * dpos.y * dpos.x;
-            mat_d[(2, 2)] += w * dpos.y * dpos.y;
-        }
-        let d_inv = mat_d.try_inverse();
-        if d_inv.is_none() { return 0. as Real }
-        d_inv.unwrap()
-    };
-    let mut val: Real = 0.;
-    for &gd in gds.iter() {
-        let q = nalgebra::Vector3::<Real>::new(1., gd.1.x, gd.1.y);
-        let tmp = (mat_d_inv * q).scale(gd.2);
-        if gd.0 < bg.m * bg.m && bg.is_inside[gd.0] {
-            // val += tmp * sdf(bg[gd.0])
-            val += tmp.x;
+    let mut min_dist: Real = 1000.;
+    let np = vtx2xy_boundary.len() / 2;
+    for ip in 0..np {
+        let jp = (ip + 1) % np;
+        let pi = nalgebra::Vector2::<Real>::from_row_slice(
+            &vtx2xy_boundary[ip * 2 + 0..ip * 2 + 2]);
+        let pj = nalgebra::Vector2::<Real>::from_row_slice(
+            &vtx2xy_boundary[jp * 2 + 0..jp * 2 + 2]);
+            
+        let dist = point_line_dist(*p, pi, pj);
+        if min_dist > dist {
+            min_dist = dist;
         }
     }
-    val
+
+    if del_msh::polyloop2::is_inside(vtx2xy_boundary, &[p.x, p.y]) {
+        return -min_dist;
+    } else {
+        return min_dist;
+    }
 }
 
 fn main() {
@@ -74,39 +73,29 @@ fn main() {
         0., 0., 1.);
     let transform_pix2xy = transform_xy2pix.try_inverse().unwrap();
 
-    canvas.clear(0);
-    for iw in 0..canvas.width {
-        for ih in 0..canvas.height {
-            let pix = nalgebra::Vector3::<Real>::new(iw as Real, ih as Real, 1.);
-            let xy = transform_pix2xy * pix;
-            let xy = Vector::new(xy.x, xy.y);
-            let v = interpolation(&bg, &xy, true);
-            let r = (v * 255.0) as u8;
-            canvas.paint_pixel(iw, ih, r, r, r);
-        }
-    }
-    canvas.paint_polyloop(
-        &bg.vtx2xy_boundary, &transform_xy2pix,
-        0.6, 0xffffff);
-    for p in &bg.points {
-        canvas.paint_point(p.x, p.y, &transform_xy2pix,
-                           1., 0x0000ff);
-    }
-    for i in 0..bg.m {
-        for j in 0..bg.m {
-            let dh = 1.0 / bg.n as Real;
-            if bg.is_inside[j * bg.m + i] {
-                canvas.paint_point(
-                    dh * i as Real, dh * j as Real, &transform_xy2pix,
-                    1., 0xff0000);
-            } else {
-                canvas.paint_point(
-                    dh * i as Real, dh * j as Real, &transform_xy2pix,
-                    1., 0x00ff00);
+    // render ground truth
+    {
+        canvas.clear(0);
+        for iw in 0..canvas.width {
+            for ih in 0..canvas.height {
+                let pix = nalgebra::Vector3::<Real>::new(iw as Real, ih as Real, 1.);
+                let xy = transform_pix2xy * pix;
+                let xy = Vector::new(xy.x, xy.y);
+                let v = query_sdf(&bg.vtx2xy_boundary, &xy);
+                let r = v * 25555.0;
+                if r > 0. {
+                    canvas.paint_pixel(iw, ih, r as u8, 0, 0); 
+                } else {
+                    canvas.paint_pixel(iw, ih, 0, -r as u8, 0);
+                }
             }
         }
+        canvas.paint_polyloop(
+            &bg.vtx2xy_boundary, &transform_xy2pix,
+            0.6, 0xffffff);
+
+        canvas.write(std::path::Path::new("target/9.png"));
     }
-    canvas.write(std::path::Path::new("target/9.png"));
 }
 
 
