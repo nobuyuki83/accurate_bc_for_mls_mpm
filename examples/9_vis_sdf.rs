@@ -52,8 +52,48 @@ fn query_sdf(
     }
 }
 
+fn interpolation(
+    bg: &mpm2::background2::Grid::<Real>,
+    x: &Vector,
+    is_sample_exterior: bool) -> Real
+{
+    let gds = if is_sample_exterior {
+        bg.near_grid_points(x)
+    } else {
+        bg.near_interior_grid_boundary_points(x)
+    };
+    let mat_d_inv = {
+        let mut mat_d = nalgebra::Matrix3::<Real>::zero();
+        for &gd in gds.iter() {
+            let dpos = gd.1;
+            let w = gd.2;
+            mat_d[(0, 0)] += w;
+            mat_d[(0, 1)] += w * dpos.x;
+            mat_d[(0, 2)] += w * dpos.y;
+            mat_d[(1, 0)] += w * dpos.x;
+            mat_d[(1, 1)] += w * dpos.x * dpos.x;
+            mat_d[(1, 2)] += w * dpos.x * dpos.y;
+            mat_d[(2, 0)] += w * dpos.y;
+            mat_d[(2, 1)] += w * dpos.y * dpos.x;
+            mat_d[(2, 2)] += w * dpos.y * dpos.y;
+        }
+        let d_inv = mat_d.try_inverse();
+        if d_inv.is_none() { return 0. as Real }
+        d_inv.unwrap()
+    };
+    let mut val: Real = 0.;
+    for &gd in gds.iter() {
+        let q = nalgebra::Vector3::<Real>::new(1., gd.1.x, gd.1.y);
+        let tmp = (mat_d_inv * q).scale(gd.2);
+        // if gd.0 < bg.m * bg.m {// bg.is_inside[gd.0] {
+            val += tmp.x * bg.vm[gd.0].x;
+        // }
+    }
+    val
+}
+
 fn main() {
-    let bg = {
+    let mut bg = {
         let boundary = 0.047;
         let vtx2xy_boundary = [
             //boundary, boundary,
@@ -61,7 +101,7 @@ fn main() {
             1. - boundary, boundary,
             1. - boundary, 1. - boundary,
             boundary, 1. - boundary];
-        mpm2::background2::Grid::new(30, &vtx2xy_boundary, false, false, 0.)
+        mpm2::background2::Grid::new(30, &vtx2xy_boundary, true, true, 1. / 30 as Real)
     };
 
     let mut canvas = mpm2::canvas::Canvas::new(
@@ -94,7 +134,59 @@ fn main() {
             &bg.vtx2xy_boundary, &transform_xy2pix,
             0.6, 0xffffff);
 
-        canvas.write(std::path::Path::new("target/9.png"));
+        canvas.write(std::path::Path::new("target/9_ground_truth.png"));
+    }
+
+    // render interpolated field
+    {
+        // assign sdf to grid points (use bg.vm as memory)
+        for i in 0..bg.m {
+            for j in 0..bg.m {
+                let dh = 1.0 / bg.n as Real;
+                let xy = nalgebra::Vector2::new(dh * i as Real, dh * j as Real);
+                bg.vm[j * bg.m + i].x = query_sdf(&bg.vtx2xy_boundary, &xy);
+            }
+        }
+
+        for (i, p) in bg.points.iter().enumerate() {
+            bg.vm[bg.m * bg.m + i].x = query_sdf(&bg.vtx2xy_boundary, &p)
+        }
+
+        canvas.clear(0);
+        for iw in 0..canvas.width {
+            for ih in 0..canvas.height {
+                let pix = nalgebra::Vector3::<Real>::new(iw as Real, ih as Real, 1.);
+                let xy = transform_pix2xy * pix;
+                let xy = Vector::new(xy.x, xy.y);
+                let v = interpolation(&bg, &xy, true);
+                let r = v * 25555.0;
+                if r > 0. {
+                    canvas.paint_pixel(iw, ih, r as u8, 0, 0); 
+                } else {
+                    canvas.paint_pixel(iw, ih, 0, -r as u8, 0);
+                }
+            }
+        }
+        canvas.paint_polyloop(
+            &bg.vtx2xy_boundary, &transform_xy2pix,
+            0.6, 0xffffff);
+
+        for i in 0..bg.m {
+            for j in 0..bg.m {
+                let dh = 1.0 / bg.n as Real;
+                if bg.is_inside[j * bg.m + i] {
+                    canvas.paint_point(
+                        dh * i as Real, dh * j as Real, &transform_xy2pix,
+                        1., 0xff0000);
+                } else {
+                    canvas.paint_point(
+                        dh * i as Real, dh * j as Real, &transform_xy2pix,
+                        1., 0x00ff00);
+                }
+            }
+        }
+
+        canvas.write(std::path::Path::new("target/9_interpolated.png")); 
     }
 }
 
