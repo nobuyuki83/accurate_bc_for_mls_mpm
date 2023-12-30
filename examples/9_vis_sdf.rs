@@ -46,22 +46,23 @@ fn query_sdf(
     }
 
     if del_msh::polyloop2::is_inside(vtx2xy_boundary, &[p.x, p.y]) {
-        return -min_dist;
-    } else {
         return min_dist;
+    } else {
+        return 0.;
     }
 }
 
 fn interpolation(
     bg: &mpm2::background2::Grid::<Real>,
     x: &Vector,
-    is_sample_exterior: bool) -> Real
+    is_ours: bool) -> Real
 {
-    let gds = if is_sample_exterior {
-        bg.near_grid_points(x)
-    } else {
+    let gds = if is_ours {
         bg.near_interior_grid_boundary_points(x)
+    } else {
+        bg.near_grid_points(x)
     };
+    
     let mat_d_inv = {
         let mut mat_d = nalgebra::Matrix3::<Real>::zero();
         for &gd in gds.iter() {
@@ -85,14 +86,17 @@ fn interpolation(
     for &gd in gds.iter() {
         let q = nalgebra::Vector3::<Real>::new(1., gd.1.x, gd.1.y);
         let tmp = (mat_d_inv * q).scale(gd.2);
-        // if gd.0 < bg.m * bg.m {// bg.is_inside[gd.0] {
-            val += tmp.x * bg.vm[gd.0].x;
-        // }
+
+        if is_ours && gd.0 < bg.m * bg.m && !bg.is_inside[gd.0] { continue; }
+
+        val += tmp.x * bg.vm[gd.0].x;
     }
     val
 }
 
 fn main() {
+    let is_ours: bool = true;
+
     let mut bg = {
         let boundary = 0.047;
         let vtx2xy_boundary = [
@@ -101,7 +105,7 @@ fn main() {
             1. - boundary, boundary,
             1. - boundary, 1. - boundary,
             boundary, 1. - boundary];
-        mpm2::background2::Grid::new(30, &vtx2xy_boundary, true, true, 1. / 30 as Real)
+        mpm2::background2::Grid::new(30, &vtx2xy_boundary, is_ours, is_ours, 1. / 120 as Real)
     };
 
     let mut canvas = mpm2::canvas::Canvas::new(
@@ -122,12 +126,8 @@ fn main() {
                 let xy = transform_pix2xy * pix;
                 let xy = Vector::new(xy.x, xy.y);
                 let v = query_sdf(&bg.vtx2xy_boundary, &xy);
-                let r = v * 25555.0;
-                if r > 0. {
-                    canvas.paint_pixel(iw, ih, r as u8, 0, 0); 
-                } else {
-                    canvas.paint_pixel(iw, ih, 0, -r as u8, 0);
-                }
+                let r = v * 55555.0;
+                canvas.paint_pixel(iw, ih, 0, r as u8, 0);
             }
         }
         canvas.paint_polyloop(
@@ -158,13 +158,9 @@ fn main() {
                 let pix = nalgebra::Vector3::<Real>::new(iw as Real, ih as Real, 1.);
                 let xy = transform_pix2xy * pix;
                 let xy = Vector::new(xy.x, xy.y);
-                let v = interpolation(&bg, &xy, true);
-                let r = v * 25555.0;
-                if r > 0. {
-                    canvas.paint_pixel(iw, ih, r as u8, 0, 0); 
-                } else {
-                    canvas.paint_pixel(iw, ih, 0, -r as u8, 0);
-                }
+                let v = interpolation(&bg, &xy, is_ours);
+                let r = v * 55555.0;
+                canvas.paint_pixel(iw, ih, 0, r as u8, 0);
             }
         }
         canvas.paint_polyloop(
@@ -184,6 +180,10 @@ fn main() {
                         1., 0x00ff00);
                 }
             }
+        }
+
+        for p in &bg.points {
+            canvas.paint_point(p.x, p.y, &transform_xy2pix, 1., 0x0000ff);
         }
 
         canvas.write(std::path::Path::new("target/9_interpolated.png")); 
