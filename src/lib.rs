@@ -8,6 +8,7 @@ pub mod background;
 pub mod background2;
 pub mod particle_solid;
 pub mod particle_fluid;
+pub mod colormap;
 
 pub fn myclamp<T>(
     v: T,
