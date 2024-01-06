@@ -80,7 +80,7 @@ fn main() {
     };
 
     // let colormap = mpm2::colormap::COLORMAP_JET;
-    let colormap = mpm2::colormap::COLORMAP_PLASMA;
+    let colormap = del_canvas::colormap::COLORMAP_PLASMA;
     let colormap_max = 0.3;
     let circle_rad = 4.0;
 
@@ -100,7 +100,7 @@ fn main() {
             N, &vtx2xy_boundary,
             true, 1. / N as f64 * 0.25);
         {
-            let mut canvas = mpm2::canvas::Canvas::new(CANVAS_SIZE);
+            let mut canvas = del_canvas::canvas::Canvas::new(CANVAS_SIZE);
             canvas.clear(0);
             for iw in 0..canvas.width {
                 for ih in 0..canvas.height {
@@ -108,7 +108,7 @@ fn main() {
                     let xy = transform_pix2xy * pix;
                     let xy = Vector::new(xy.x, xy.y);
                     let v = interpolation(&bg, &xy, &sdf, false) * (N as Real);
-                    let rgb = mpm2::colormap::apply_colormap(
+                    let rgb = del_canvas::colormap::apply_colormap(
                         v, 0., colormap_max,
                         colormap
                     );
@@ -208,7 +208,7 @@ fn main() {
             N, &vtx2xy_boundary,
             false, 1. / N as f64 * 0.25);
         {
-            let mut canvas = mpm2::canvas::Canvas::new(CANVAS_SIZE);
+            let mut canvas = del_canvas::canvas::Canvas::new(CANVAS_SIZE);
             canvas.clear(0);
             for iw in 0..canvas.width {
                 for ih in 0..canvas.height {
@@ -216,7 +216,7 @@ fn main() {
                     let xy = transform_pix2xy * pix;
                     let xy = Vector::new(xy.x, xy.y);
                     let v = interpolation(&bg, &xy, &sdf, true) * (N as Real);
-                    let rgb = mpm2::colormap::apply_colormap(
+                    let rgb = del_canvas::colormap::apply_colormap(
                         v, 0., colormap_max,
                         colormap);
                     canvas.paint_pixel(iw, ih, (rgb[0] * 255.0) as u8, (rgb[1] * 255.0) as u8, (rgb[2] * 255.0) as u8);
@@ -227,7 +227,7 @@ fn main() {
     }
 
     {
-        let mut canvas = mpm2::canvas::Canvas::new(CANVAS_SIZE);
+        let mut canvas = del_canvas::canvas::Canvas::new(CANVAS_SIZE);
         canvas.clear(0);
         for iw in 0..canvas.width {
             for ih in 0..canvas.height {
@@ -242,7 +242,7 @@ fn main() {
                     }
                 }
                 let dist = dist * 30.;
-                let rgb = mpm2::colormap::apply_colormap(
+                let rgb = del_canvas::colormap::apply_colormap(
                     dist, 0., colormap_max,
                     colormap);
                 canvas.paint_pixel(iw, ih, (rgb[0] * 255.0) as u8, (rgb[1] * 255.0) as u8, (rgb[2] * 255.0) as u8);
@@ -252,12 +252,12 @@ fn main() {
     }
 
     {
-        let mut canvas = mpm2::canvas::Canvas::new((255,20));
+        let mut canvas = del_canvas::canvas::Canvas::new((255,20));
         canvas.clear(0);
         for iw in 0..canvas.width {
             for ih in 0..canvas.height {
                 let dist = iw as Real / canvas.width as Real;
-                let rgb = mpm2::colormap::apply_colormap(
+                let rgb = del_canvas::colormap::apply_colormap(
                     dist, 0., 1.0,
                     colormap);
                 canvas.paint_pixel(iw, ih, (rgb[0] * 255.0) as u8, (rgb[1] * 255.0) as u8, (rgb[2] * 255.0) as u8);

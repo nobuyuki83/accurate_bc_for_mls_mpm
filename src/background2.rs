@@ -170,8 +170,7 @@ impl<Real> Grid<Real>
                 c.component_mul(&c).scale(half)
             ]
         };
-        let mut res = Vec::<(usize, nalgebra::Vector2::<Real>, Real)>::new();
-        res.reserve(9);
+        let mut res = Vec::<(usize, nalgebra::Vector2::<Real>, Real)>::with_capacity(9);
         for i in 0..3usize {
             for j in 0..3usize {
                 let dpos = nalgebra::Vector2::<Real>::new(
@@ -223,8 +222,7 @@ impl<Real> Grid<Real>
                 c.component_mul(&c).scale(half)
             ]
         };
-        let mut res = Vec::<(usize, nalgebra::Vector2::<Real>, Real)>::new();
-        res.reserve(9);
+        let mut res = Vec::<(usize, nalgebra::Vector2::<Real>, Real)>::with_capacity(9);
         for i in 0..3usize {
             for j in 0..3usize {
                 let dpos = nalgebra::Vector2::<Real>::new(

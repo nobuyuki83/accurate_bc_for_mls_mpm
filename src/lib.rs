@@ -2,13 +2,10 @@ extern crate core;
 
 use num_traits::AsPrimitive;
 
-pub mod canvas;
-pub mod canvas_gif;
 pub mod background;
 pub mod background2;
 pub mod particle_solid;
 pub mod particle_fluid;
-pub mod colormap;
 
 pub fn myclamp<T>(
     v: T,
@@ -86,8 +83,7 @@ pub fn grid_datas<Real>(
             c.component_mul(&c).scale(0.5.as_())
         ]
     };
-    let mut res = Vec::<(usize, nalgebra::Vector2::<Real>, Real)>::new();
-    res.reserve(9);
+    let mut res = Vec::<(usize, nalgebra::Vector2::<Real>, Real)>::with_capacity(9);
     for i in 0..3_usize {
         for j in 0..3_usize {
             let dpos = nalgebra::Vector2::<Real>::new(

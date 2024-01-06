@@ -167,7 +167,7 @@ fn sim(is_ours: bool, is_snow: bool, is_full_slip: bool, path: &str) {
     };
 
     const SKIP_FRAME: usize = 40;
-    let mut canvas = mpm2::canvas_gif::CanvasGif::new(
+    let mut canvas = del_canvas::canvas_gif::CanvasGif::new(
         std::path::Path::new(path), (1600, 1600),
         &vec!(0xffffff, 0x00CCCC, 0x00CC00, 0x0000FF, 0xaaaaaa, 0xFF0000, 0xFFAA00));
         //&vec!(0xffffff, 0x00AAFF, 0x00FF00, 0x0000FF, 0x000000, 0xFF0000, 0xFFAA00));

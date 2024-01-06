@@ -145,7 +145,7 @@ fn main() {
     const PARTICLE_MASS: Real = 1.0;
 
     const FRAME_DT: Real = 1e-3;
-    let mut canvas = mpm2::canvas_gif::CanvasGif::new(
+    let mut canvas = del_canvas::canvas_gif::CanvasGif::new(
         std::path::Path::new("target/4.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587, 0xFFFFFF, 0xFF00FF));
     let transform_to_scr = nalgebra::Matrix3::<Real>::new(

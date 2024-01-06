@@ -137,7 +137,7 @@ fn main() {
     };
 
     const FRAME_DT: Real = 1e-3;
-    let mut canvas = mpm2::canvas_gif::CanvasGif::new(
+    let mut canvas = del_canvas::canvas_gif::CanvasGif::new(
         std::path::Path::new("target/6.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587, 0xffffff, 0xFF00FF, 0xFFFF00));
     let transform_to_scr = nalgebra::Matrix3::<Real>::new(

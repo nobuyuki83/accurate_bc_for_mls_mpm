@@ -102,7 +102,7 @@ fn main() {
     let mut grid: Vec<nalgebra::Vector3::<Real>> = vec!(nalgebra::Vector3::<Real>::new(0., 0., 0.); M * M);
 
     const FRAME_DT: Real = 1e-3;
-    let mut canvas = mpm2::canvas_gif::CanvasGif::new(
+    let mut canvas = del_canvas::canvas_gif::CanvasGif::new(
         std::path::Path::new("target/1.gif"), (800, 800),
         &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587));
     let transform_to_scr = nalgebra::Matrix3::<Real>::new(

@@ -60,7 +60,7 @@ fn main() {
         }
     }
     {
-        let mut canvas = mpm2::canvas::Canvas::new((800, 800));
+        let mut canvas = del_canvas::canvas::Canvas::new((800, 800));
         let transform_to_scr = nalgebra::Matrix3::<f32>::new(
             canvas.width as f32, 0., 0.,
             0., -(canvas.height as f32), canvas.height as f32,

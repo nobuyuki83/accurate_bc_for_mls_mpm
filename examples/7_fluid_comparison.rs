@@ -172,7 +172,7 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
 
     const SKIP_FRAME: usize = 40;
     // const SKIP_FRAME: usize = 1;
-    let mut canvas = mpm2::canvas_gif::CanvasGif::new(
+    let mut canvas = del_canvas::canvas_gif::CanvasGif::new(
         std::path::Path::new(path), (1600, 1600),
         &vec!(0xffffff, 0x00CCCC, 0x00CC00, 0x0000FF, 0xaaaaaa, 0xFF0000, 0xFFAA00));
         //&vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587, 0xffffff, 0xFF00FF, 0xFFFF00));

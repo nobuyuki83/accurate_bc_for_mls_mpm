@@ -52,8 +52,7 @@ fn main() {
 
     let poly1 = intersections_polygon_gird(&poly0, N);
 
-    use mpm2::canvas::Canvas;
-    let mut canvas = Canvas::new((827, 827));
+    let mut canvas = del_canvas::canvas::Canvas::new((827, 827));
     let transform_to_scr = nalgebra::Matrix3::<f32>::new(
         canvas.width as f32, 0., 0.,
         0., -(canvas.height as f32), canvas.height as f32,
