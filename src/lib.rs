@@ -102,3 +102,17 @@ pub fn grid_datas<Real>(
     }
     res
 }
+
+pub fn scale_translate_vtx2xy<Real>(
+    vtx2xy: &Vec<Real>,
+    center: &[Real],
+    scale: Real) -> Vec<Real>
+    where Real: num_traits::Float + 'static + Copy
+{
+    let mut xys = Vec::<Real>::new();
+    for i in 0..vtx2xy.len() / 2 {
+        xys.push(vtx2xy[2 * i] * scale +  center[0]);
+        xys.push(vtx2xy[2 * i + 1] * scale + center[1]);
+    }
+    xys
+}

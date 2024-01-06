@@ -133,7 +133,7 @@ fn main() {
             1. - boundary, boundary,
             1. - boundary, 1. - boundary,
             boundary, 1. - boundary];
-        mpm2::background2::Grid::new(80, &vtx2xy_boundary, false, false, 0 as Real)
+        mpm2::background2::Grid::new(80, &vtx2xy_boundary, false, 0 as Real)
     };
 
     const FRAME_DT: Real = 1e-3;
@@ -169,7 +169,7 @@ fn main() {
             particle_mass, TARGET_DENSITY,
             EOS_STIFFNESS, EOS_POWER, DYNAMIC_VISCOSITY,
             DT);
-        bg.set_boundary(&(DT * nalgebra::Vector3::new(0., -200., 0.)));
+        bg.set_boundary(&(DT * nalgebra::Vector3::new(0., -200., 0.)), false);
         mpm2_g2p(
             &mut particles,
             &bg,

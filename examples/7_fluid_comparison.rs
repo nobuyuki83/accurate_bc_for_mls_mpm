@@ -108,19 +108,22 @@ fn mpm2_g2p(
     }
 }
 
+
 fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
-    const DT: Real = 5e-5;
+    const DT: Real = 7.5e-5;
     const EOS_STIFFNESS: Real = 10.0e+1_f64;
     const EOS_POWER: i32 = 4_i32;
-    const DYNAMIC_VISCOSITY: Real = 4e-1f64;
-    const TARGET_DENSITY: Real = 60_000_f64; // mass par unit square
+    const DYNAMIC_VISCOSITY: Real = 6e-1f64;
+    const TARGET_DENSITY: Real = 30_000_f64; // mass par unit square
     //
     let mut particles = Vec::<mpm2::particle_fluid::Particle::<Real>>::new();
     let area = {
         let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_seed([13_u8; 32]);
         let cell_len = 0.007;
         // let vtx2xy0 = vec!(0.47, 0.37, 0.63, 0.37, 0.63, 0.53, 0.47, 0.53);
-        let vtx2xy0 = del_msh::polyloop2::from_pentagram(&[0.55, 0.45], 0.13);
+        //let vtx2xy0 = del_msh::polyloop2::from_pentagram(&[0.55, 0.45], 0.13);
+        let e_coords: Vec<Real> = vec!(-0.5, -0.5, 0.5, -0.5, 0.5, -0.3, -0.25, -0.3, -0.25, -0.1, 0.5, -0.1, 0.5, 0.1, -0.25, 0.1, -0.25, 0.3, 0.5, 0.3, 0.5, 0.5, -0.5, 0.5);
+        let vtx2xy0 = mpm2::scale_translate_vtx2xy(&e_coords, &[0.45, 0.75], 0.25);
         let area0 = del_msh::polyloop2::area(&vtx2xy0);
         let xys0 = del_msh::polyloop2::to_uniform_density_random_points(&vtx2xy0, cell_len, &mut rng);
         xys0.chunks(2).for_each(
@@ -130,7 +133,9 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
                         nalgebra::Vector2::<Real>::new(v[0], v[1]), 1)));
         //
         // let vtx2xy1 = vec!(0.37, 0.57, 0.53, 0.57, 0.53, 0.73, 0.37, 0.73);
-        let vtx2xy1 = del_msh::polyloop2::from_pentagram(&[0.45, 0.75], 0.17);
+        // let vtx2xy1 = del_msh::polyloop2::from_pentagram(&[0.45, 0.75], 0.17);
+        let g_coords: Vec<Real> = vec!(-0.5, -0.5, 0.5, -0.5, 0.5, 0.1, 0.0, 0.1, 0.0, -0.1, 0.25, -0.1, 0.25, -0.3, -0.25, -0.3, -0.25, 0.3, 0.5, 0.3, 0.5, 0.5, -0.5, 0.5);
+        let vtx2xy1 = mpm2::scale_translate_vtx2xy(&g_coords, &[0.65, 0.45], 0.21);
         let area1 = del_msh::polyloop2::area(&vtx2xy1);
         let xys1 = del_msh::polyloop2::to_uniform_density_random_points(&vtx2xy1, cell_len, &mut rng);
         xys1.chunks(2).for_each(
@@ -143,6 +148,8 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
         area0 + area1
     };
     let particle_mass: Real = area * TARGET_DENSITY / (particles.len() as Real);
+
+    dbg!(particles.len());
 
     const N: usize = 80;
     let mut bg = {
@@ -163,16 +170,19 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
             delta)
     };
 
-    const SKIP_FRAME: usize = 20;
+    const SKIP_FRAME: usize = 40;
+    // const SKIP_FRAME: usize = 1;
     let mut canvas = mpm2::canvas_gif::CanvasGif::new(
-        std::path::Path::new(path), (800, 800),
-        &vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587, 0xffffff, 0xFF00FF, 0xFFFF00));
+        std::path::Path::new(path), (1600, 1600),
+        &vec!(0xffffff, 0x00CCCC, 0x00CC00, 0x0000FF, 0xaaaaaa, 0xFF0000, 0xFFAA00));
+        //&vec!(0x112F41, 0xED553B, 0xF2B134, 0x068587, 0xffffff, 0xFF00FF, 0xFFFF00));
     let transform_to_scr = nalgebra::Matrix3::<Real>::new(
         canvas.width as Real, 0., 0.,
         0., -(canvas.height as Real), canvas.height as Real,
         0., 0., 1.);
 
     canvas.clear(0);
+    /*
     canvas.paint_polyloop(
         &bg.vtx2xy_boundary, &transform_to_scr,
         2., 2);
@@ -181,6 +191,7 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
                            2., p.c);
     }
     canvas.write();
+     */
     let mut i_step = 0;
 
     loop {
@@ -207,41 +218,48 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
             DT, is_ours);
         if i_step % SKIP_FRAME == 0 {
             canvas.clear(0);
-            canvas.paint_polyloop(
-                &bg.vtx2xy_boundary, &transform_to_scr,
-                0.6, 2);
             for p in particles.iter() {
                 canvas.paint_point(p.x.x, p.x.y, &transform_to_scr,
-                                   2., p.c);
+                                   6., p.c);
             }
-            for p in &bg.gpbc2xy {
-                canvas.paint_point(p.x, p.y, &transform_to_scr,
-                                   1., 4);
-            }
-            for i in 0..bg.m {
-                for j in 0..bg.m {
-                    let dh = 1.0 / bg.n as Real;
-                    if bg.is_inside[j*bg.m+i] {
-                        canvas.paint_point(
-                            dh * i as Real, dh * j as Real, &transform_to_scr,
-                            1., 5);
-                    } else {
-                        canvas.paint_point(
-                            dh * i as Real, dh * j as Real, &transform_to_scr,
-                            1., 6);
+            canvas.paint_polyloop(
+                &bg.vtx2xy_boundary, &transform_to_scr,
+                2.0, 4);
+            if !is_full_slip {
+                for p in &bg.gpbc2xy {
+                    canvas.paint_point(p.x, p.y, &transform_to_scr,
+                                       3.0, 3);
+                }
+                for i in 0..bg.m {
+                    for j in 0..bg.m {
+                        let dh = 1.0 / bg.n as Real;
+                        if bg.is_inside[j * bg.m + i] {
+                            canvas.paint_point(
+                                dh * i as Real, dh * j as Real, &transform_to_scr,
+                                2., 5);
+                        } else {
+                            canvas.paint_point(
+                                dh * i as Real, dh * j as Real, &transform_to_scr,
+                                2., 6);
+                        }
                     }
                 }
             }
             canvas.write();
         }
-        if i_step > 6000 { break; }
+        if i_step > 10000 { break; }
     }
 }
 
 
 fn main() {
-    sim(false, true,"target/7_naive_fullslip.gif");
+    let now = time::Instant::now();
     sim(false, false,"target/7_naive_nonslip.gif");
+    println!("naive {:?}", now.elapsed());
+    let now = time::Instant::now();
     sim(true, false,"target/7_ours_nonslip.gif");
+    println!("our {:?}", now.elapsed());
+    //
+    sim(true, true,"target/7_ours_fullslip.gif");
 }
 

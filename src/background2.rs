@@ -73,8 +73,8 @@ impl<Real> Grid<Real>
             let mut nrm1 = vec!(nalgebra::Vector2::<Real>::zeros(); gpbc2xy.len());
             let np = gpbc2xy.len();
             for i1 in 0..np {
-                let i0 = (i1 + np -1) % np;
-                let i2 = (i1+1) % np;
+                let i0 = (i1 + np -2) % np;
+                let i2 = (i1+2) % np;
                 let p0 = gpbc2xy[i0];
                 let p1 = gpbc2xy[i1];
                 let p2 = gpbc2xy[i2];
