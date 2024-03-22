@@ -20,6 +20,8 @@ preventing particles from passing through the wall.
 We compare the boundary behavior of 2D simulation against that of 
 naive approach.
 
+![teaser](images/teaser.png)
+
 |naive|ours|
 |---|---|
 |![naive](images/naive_nonslip.gif)|![our](images/ours_nonslip.gif)|
