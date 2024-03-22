@@ -1,6 +1,9 @@
 /target
 *.gif
 *.png
+!images/teaser.png
+!images/naive_nonslip.gif
+!images/ours_nonslip.gif
 .DS_Store
 .idea
 Cargo.lock
