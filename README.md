@@ -22,6 +22,7 @@ naive approach.
 
 ![teaser](images/teaser.png)
 
-|naive|ours|
-|---|---|
-|![naive](images/naive_nonslip.gif)|![our](images/ours_nonslip.gif)|
+| naive                                     | ours                                   |
+|-------------------------------------------|----------------------------------------|
+| ![naive](images/naive_nonslip.gif)        | ![our](images/ours_nonslip.gif)        |
+| ![naive](images/naive_nonslip_sphere.gif) | ![our](images/ours_nonslip_sphere.gif) |

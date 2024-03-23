@@ -3,7 +3,9 @@
 *.png
 !images/teaser.png
 !images/naive_nonslip.gif
+!images/naive_nonslip_sphere.gif
 !images/ours_nonslip.gif
+!images/ours_nonslip_sphere.gif
 .DS_Store
 .idea
 Cargo.lock
