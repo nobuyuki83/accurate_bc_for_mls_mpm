@@ -236,7 +236,8 @@ fn main() {
                 let xy = Vector::new(xy.x, xy.y);
                 let mut dist = 0.;
                 {
-                    let is_inside = del_msh::polyloop2::is_inside(&vtx2xy_boundary, xy.as_slice());
+                    let is_inside = del_msh::polyloop2::is_inside(
+                        &vtx2xy_boundary, xy.as_slice().try_into().unwrap());
                     if is_inside {
                         dist = del_msh::polyloop2::distance_to_point(&vtx2xy_boundary, xy.as_slice());
                     }

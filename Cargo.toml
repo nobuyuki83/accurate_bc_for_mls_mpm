@@ -9,11 +9,12 @@ edition = "2021"
 nalgebra = "0.32.3"
 num-traits = "0.2.17"
 rand = "0.8.5"
-png = "0.17.10"
-gif = "0.12.0"
 
-del-geo = {path="../del-geo"}
-del-msh = {path="../del-msh"}
-del-canvas = {path="../del-canvas"}
+# del-geo = {path="../del-geo"}
+# del-msh = {path="../del-msh"}
+# del-canvas = {path="../del-canvas"}
+del-geo = "0.1.21"
+del-msh = "0.1.27"
+del-canvas = "0.1.0"
 time = "0.3.31"
 # del-geo = "0.1.3"
