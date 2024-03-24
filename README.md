@@ -20,7 +20,7 @@ preventing particles from passing through the wall.
 We compare the boundary behavior of 2D simulation against that of 
 naive approach.
 
-![teaser](images/teaser.png)
+![teaser](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/teaser.png)
 
 | naive      | ours     |
 |------------|----------|
