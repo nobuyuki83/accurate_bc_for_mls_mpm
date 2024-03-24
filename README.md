@@ -3,9 +3,9 @@
 ![teaser](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/teaser.png)
 
 
- |[*Supplemental video on YouTube*](https://youtu.be/Rcp94v6mU3w) | [*Project page*](https://cgenglab.github.io/en/publication/eg24short_mlsmpm/) | [Paper PDF](https://www.dropbox.com/scl/fi/3ldjvx7ilitsk9haeoy7p/2024_egshort_mlsmpm.pdf?rlkey=4oofpry4tdvkhl2zxpyy64h0l&dl=0) |
+ **| [Supplemental video on YouTube](https://youtu.be/Rcp94v6mU3w) | [Project page](https://cgenglab.github.io/en/publication/eg24short_mlsmpm/) | [Paper PDF](https://www.dropbox.com/scl/fi/3ldjvx7ilitsk9haeoy7p/2024_egshort_mlsmpm.pdf?rlkey=4oofpry4tdvkhl2zxpyy64h0l&dl=0) |**
 
-# Publication
+## Publication
 
 > Riku Toyota and Nobuyuki Umetani, 2024, "Accurate Boundary Condition for Moving Least Squares 
 Material Point Method using Augmented Grid Points" Eurographics 2024 Short Paper Program
@@ -37,7 +37,7 @@ naive approach.
 | ![naive](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/naive_nonslip_sphere.gif) | ![our](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/ours_nonslip_sphere.gif) |
 
 
-# How to build
+## How to build
 
 The demos are written in `Rust`. Please [install rust development environment](https://www.rust-lang.org/learn/get-started) if you do not have rust in your computer.    
 
