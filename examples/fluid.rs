@@ -254,12 +254,11 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
 
 fn main() {
     let now = time::Instant::now();
-    sim(false, false,"target/7_naive_nonslip.gif");
+    sim(false, false,"target/fig1up_naive_nonslip.gif");
     println!("naive {:?}", now.elapsed());
     let now = time::Instant::now();
-    sim(true, false,"target/7_ours_nonslip.gif");
+    sim(true, false,"target/fig2down_ours_nonslip.gif");
     println!("our {:?}", now.elapsed());
-    //
-    sim(true, true,"target/7_ours_fullslip.gif");
+    sim(true, true,"target/fig5top_ours_fullslip.gif");
 }
 

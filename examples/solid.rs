@@ -242,7 +242,7 @@ fn sim(is_ours: bool, is_snow: bool, is_full_slip: bool, path: &str) {
 
 
 fn main() {
-    sim(true, true, true, "target/9_our_snow.gif");
-    sim(true, false, true,"target/9_our_hyper.gif");
+    sim(true, true, true, "target/fig5bottom_our_snow.gif");
+    sim(true, false, true,"target/fig5middle_our_hyper.gif");
 }
 

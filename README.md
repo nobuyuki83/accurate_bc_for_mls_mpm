@@ -26,3 +26,23 @@ naive approach.
 |------------|----------|
 | ![naive](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/naive_nonslip.gif) | ![our](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/ours_nonslip.gif) |
 | ![naive](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/naive_nonslip_sphere.gif) | ![our](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/ours_nonslip_sphere.gif) |
+
+
+# How to build
+
+The demos are written in `Rust`. Please [install rust development environment](https://www.rust-lang.org/learn/get-started) if you do not have rust in your computer.    
+
+The figures can be reproduced with the following commands.
+```bash
+# to reproduce Fig.1-top, Fig.1-bottom, and Fig.5-top
+# the outputs are in the target folder 
+cargo run --example fluid --release
+
+# to reproduce Fig.5-middle and Fig.5-bottom
+# the outputs are in the target folder
+cargo run --example solid --release
+
+# to reproduce Fig.4
+# the outputs are in the target folder
+cargo run --example sdf --release 
+```

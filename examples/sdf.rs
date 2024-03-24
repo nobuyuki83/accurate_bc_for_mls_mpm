@@ -115,7 +115,7 @@ fn main() {
                     canvas.paint_pixel(iw, ih, (rgb[0] * 255.0) as u8, (rgb[1] * 255.0) as u8, (rgb[2] * 255.0) as u8);
                 }
             }
-            canvas.write(std::path::Path::new("target/8_ours.png"));
+            canvas.write(std::path::Path::new("target/fig4middle_ours.png"));
         }
         { // output inside gridpoint
             let path = "target/8_gridpoints_in.svg";
@@ -222,7 +222,7 @@ fn main() {
                     canvas.paint_pixel(iw, ih, (rgb[0] * 255.0) as u8, (rgb[1] * 255.0) as u8, (rgb[2] * 255.0) as u8);
                 }
             }
-            canvas.write(std::path::Path::new("target/8_naive.png"));
+            canvas.write(std::path::Path::new("target/fig4left_naive.png"));
         }
     }
 
@@ -248,7 +248,7 @@ fn main() {
                 canvas.paint_pixel(iw, ih, (rgb[0] * 255.0) as u8, (rgb[1] * 255.0) as u8, (rgb[2] * 255.0) as u8);
             }
         }
-        canvas.write(std::path::Path::new("target/8_gt.png"));
+        canvas.write(std::path::Path::new("target/fig4right_gt.png"));
     }
 
     {
