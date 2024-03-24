@@ -7,13 +7,8 @@
 
 # Publication
 
-:::note
-Riku Toyota and Nobuyuki Umetani, 2024, 
-"Accurate Boundary Condition for Moving Least Squares 
-Material Point Method using Augmented Grid Points"
-Eurographics 2024 Short Paper Program
-:::
-
+> Riku Toyota and Nobuyuki Umetani, 2024, "Accurate Boundary Condition for Moving Least Squares 
+Material Point Method using Augmented Grid Points" Eurographics 2024 Short Paper Program
 
 
 ## Abstract
