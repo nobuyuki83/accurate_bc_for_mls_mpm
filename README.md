@@ -3,7 +3,7 @@
 ![teaser](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/teaser.png)
 
 
-- [Supplemental video on YouTube](https://youtu.be/Rcp94v6mU3w)
+ |[*Supplemental video on YouTube*](https://youtu.be/Rcp94v6mU3w) | [*Project page*](https://cgenglab.github.io/en/publication/eg24short_mlsmpm/) | [Paper PDF](https://www.dropbox.com/scl/fi/3ldjvx7ilitsk9haeoy7p/2024_egshort_mlsmpm.pdf?rlkey=4oofpry4tdvkhl2zxpyy64h0l&dl=0) |
 
 # Publication
 
