@@ -1,5 +1,12 @@
 # Accurate Boundary Condition for Moving Least Squares Material Point Method using Augmented Grid Points
 
+![teaser](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/teaser.png)
+
+```
+Riku Toyota and Nobuyuki Umetani, 2024, Accurate Boundary Condition for Moving Least Squares Material Point Method using Augmented Grid Points, Eurographics 2024 Short Paper Program
+```
+
+
 ## Abstract
 This paper introduces an accurate boundary-handling method for 
 the moving least squares (MLS) material point method (MPM), 
@@ -19,8 +26,6 @@ the velocity perpendicular to the wall nearly zero,
 preventing particles from passing through the wall.
 We compare the boundary behavior of 2D simulation against that of 
 naive approach.
-
-![teaser](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/teaser.png)
 
 | naive      | ours     |
 |------------|----------|
