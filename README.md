@@ -22,7 +22,7 @@ naive approach.
 
 ![teaser](images/teaser.png)
 
-| naive                                     | ours                                   |
-|-------------------------------------------|----------------------------------------|
-| ![naive](images/naive_nonslip.gif)        | ![our](images/ours_nonslip.gif)        |
-| ![naive](images/naive_nonslip_sphere.gif) | ![our](images/ours_nonslip_sphere.gif) |
+| naive      | ours     |
+|------------|----------|
+| ![naive](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/naive_nonslip.gif) | ![our](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/ours_nonslip.gif) |
+| ![naive](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/naive_nonslip_sphere.gif) | ![our](https://github.com/nobuyuki83/accurate_bc_for_mls_mpm/blob/images/ours_nonslip_sphere.gif) |
