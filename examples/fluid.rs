@@ -11,16 +11,20 @@ fn mpm2_p2g_first(
     bg: &mut mpm2::background2::Grid<Real>,
     particles: &Vec::<mpm2::particle_fluid::Particle<Real>>,
     particle_mass: Real,
-    is_ours: bool)
+    is_ours: bool) -> (u128, u128)
 {
     // Reset grid
     bg.set_velocity_zero();
     bg.gp2mass.iter_mut().for_each(|v| *v = Real::zero() );
 
+    let mut e_searching: u128 = 0;
+    let mut e_fitting: u128 = 0;
     // P2G
     for p in particles {
-        let (gds, mat_d) = bg.velocity_interpolation(&p.x, is_ours);
+        let (gds, mat_d, e_search, e_fit) = bg.velocity_interpolation(&p.x, is_ours);
         {
+            e_searching += e_search;
+            e_fitting += e_fit;
             for &gd in gds.iter() {
                 let q = nalgebra::Vector3::<Real>::new(1., gd.1.x, gd.1.y);
                 let weight = gd.2 * (mat_d * q).x;
@@ -39,6 +43,8 @@ fn mpm2_p2g_first(
             }
         }
     }
+
+    (e_searching, e_fitting)
 }
 
 fn mpm2_p2g_second(
@@ -50,8 +56,12 @@ fn mpm2_p2g_second(
     eos_power: i32,
     dynamic_viscosity: Real,
     dt: Real,
-    is_ours: bool) {
+    is_ours: bool) -> (u128, u128)
+    {
     let dx: Real = 1.0 / bg.n as Real;
+
+    let mut e_searching: u128 = 0;
+    let mut e_fitting: u128 = 0;
     // P2G
     for p in particles {
         let (volume, stress) = {
@@ -69,7 +79,9 @@ fn mpm2_p2g_second(
                 0., -pressure) + (p.velograd + p.velograd.transpose()).scale(dynamic_viscosity);
             (volume, stress)
         };
-        let (gds, mat_d_inv) = bg.velocity_interpolation(&p.x, is_ours);
+        let (gds, mat_d_inv, e_search, e_fit) = bg.velocity_interpolation(&p.x, is_ours);
+        e_searching += e_search;
+        e_fitting += e_fit;
         for &gd in gds.iter() {
             let q = nalgebra::Vector3::<Real>::new(1., gd.1.x, gd.1.y);
             let d = gd.2 * nalgebra::Vector2::<Real>::new((mat_d_inv * q).y, (mat_d_inv * q).z);
@@ -79,17 +91,24 @@ fn mpm2_p2g_second(
             bg.vm[gd.0].y += moment.y;
         }
     }
+
+    (e_searching, e_fitting)
 }
 
 fn mpm2_g2p(
     particles: &mut Vec::<mpm2::particle_fluid::Particle::<Real>>,
     bg: &mpm2::background2::Grid::<Real>,
     dt: Real,
-    is_ours: bool) {
+    is_ours: bool) -> (u128, u128)
+{
+    let mut e_searching: u128 = 0;
+    let mut e_fitting: u128 = 0;
     for p in particles {
         p.velograd.set_zero();
         p.v.set_zero();
-        let (gds, mat_d_inv) = bg.velocity_interpolation(&p.x, is_ours);
+        let (gds, mat_d_inv, e_search, e_fit) = bg.velocity_interpolation(&p.x, is_ours);
+        e_searching += e_search;
+        e_fitting += e_fit;
         for &gd in gds.iter() {
             let q = nalgebra::Vector3::<Real>::new(1., gd.1.x, gd.1.y);
             let tmp = (mat_d_inv * q).scale(gd.2);
@@ -106,10 +125,12 @@ fn mpm2_g2p(
         // project
 
     }
+
+    (e_searching, e_fitting)
 }
 
 
-fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
+fn sim(is_ours: bool, is_full_slip: bool, path: &str) -> (u128, u128) {
     const DT: Real = 7.5e-5;
     const EOS_STIFFNESS: Real = 10.0e+1_f64;
     const EOS_POWER: i32 = 4_i32;
@@ -194,28 +215,44 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
      */
     let mut i_step = 0;
 
+    let mut e_searching: u128 = 0;
+    let mut e_fitting: u128 = 0;
+
     loop {
         i_step += 1;
         if i_step % 100 == 0 {
             dbg!(i_step);
         }
-        mpm2_p2g_first(
+        let (e_search, e_fit) = mpm2_p2g_first(
             &mut bg,
             &particles,
             particle_mass, is_ours);
-        mpm2_p2g_second(
+        
+        e_searching += e_search;
+        e_fitting += e_fit;
+        
+        let (e_search, e_fit) = mpm2_p2g_second(
             &mut bg,
             &particles,
             particle_mass, TARGET_DENSITY,
             EOS_STIFFNESS, EOS_POWER, DYNAMIC_VISCOSITY,
             DT, is_ours);
+
+        e_searching += e_search;
+        e_fitting += e_fit;
+
         bg.set_boundary(
             &(DT * nalgebra::Vector3::new(0., -200., 0.)),
             is_full_slip);
-        mpm2_g2p(
+
+        let (e_search, e_fit) = mpm2_g2p(
             &mut particles,
             &bg,
             DT, is_ours);
+
+        e_searching += e_search;
+        e_fitting += e_fit;
+
         if i_step % SKIP_FRAME == 0 {
             canvas.clear(0);
             for p in particles.iter() {
@@ -247,18 +284,22 @@ fn sim(is_ours: bool, is_full_slip: bool, path: &str) {
             }
             canvas.write();
         }
-        if i_step > 10000 { break; }
+        if i_step > 10000 { return (e_searching, e_fitting); }
     }
 }
 
 
 fn main() {
     let now = time::Instant::now();
-    sim(false, false,"target/fig1up_naive_nonslip.gif");
+    let (e_search, e_fit) = sim(false, false,"target/fig1up_naive_nonslip.gif");
     println!("naive {:?}", now.elapsed());
+    println!("naive search {:?} ns", e_search);
+    println!("naive fit {:?} ns", e_fit);
     let now = time::Instant::now();
-    sim(true, false,"target/fig2down_ours_nonslip.gif");
+    let (e_search, e_fit) = sim(true, false,"target/fig2down_ours_nonslip.gif");
     println!("our {:?}", now.elapsed());
+    println!("our search {:?} ns", e_search);
+    println!("our fit {:?} ns", e_fit);
     sim(true, true,"target/fig5top_ours_fullslip.gif");
 }
 

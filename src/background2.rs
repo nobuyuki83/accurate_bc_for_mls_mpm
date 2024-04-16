@@ -1,4 +1,5 @@
 use num_traits::AsPrimitive;
+use std::time;
 
 fn weight_spline_quad<Real>(x: Real) -> Real
     where Real: num_traits::Float + 'static,
@@ -305,13 +306,19 @@ impl<Real> Grid<Real>
     pub fn velocity_interpolation(
         &self,
         p: &nalgebra::Vector2::<Real>,
-        is_ours: bool) ->  (Vec<(usize, nalgebra::Vector2::<Real>, Real)>, nalgebra::Matrix3::<Real>)
+        is_ours: bool) ->  (Vec<(usize, nalgebra::Vector2::<Real>, Real)>, nalgebra::Matrix3::<Real>, u128, u128)
     {
+        // grid search
+        let start_searching = std::time::Instant::now();
         let gds = if is_ours {
             self.near_interior_grid_boundary_points(p)
         } else{
             self.near_grid_points(p)
         };
+        let elapsed_searching = start_searching.elapsed();
+
+        // fitting
+        let start_fitting = std::time::Instant::now();
         let mat_d = if is_ours {
             use num_traits::Zero;
             let mut mat_d = nalgebra::Matrix3::<Real>::zero();
@@ -338,6 +345,9 @@ impl<Real> Grid<Real>
                 Real::zero(), 4f64.as_()*inv_dx*inv_dx, Real::zero(),
                 Real::zero(), Real::zero(), 4f64.as_()*inv_dx*inv_dx)
         };
-        (gds, mat_d)
+
+        let elapsed_fitting = start_fitting.elapsed();
+
+        (gds, mat_d, elapsed_searching.as_nanos(), elapsed_fitting.as_nanos())
     }
 }
